@@ -5,6 +5,8 @@ import time
 from datetime import datetime, timezone
 from typing import Any, Callable, Dict, List, Optional
 
+from .logs import get_logger
+
 
 class CronScheduler:
     """Agendador em background que gerencia a renovação contínua de contas OAuth e integridade de conexões."""
@@ -75,7 +77,7 @@ class CronScheduler:
         start_iso = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
 
         ts_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        print(f"[{ts_str}] [CRON] Ciclo disparado ({reason}). Inspecionando conexões de contas OAuth...", flush=True)
+        get_logger().info(f"[CRON] Ciclo disparado ({reason}). Inspecionando conexoes de contas OAuth...")
 
         try:
             res = self.sync_callback()
@@ -106,10 +108,9 @@ class CronScheduler:
                 self.history.pop(0)
             self._update_next_run(self.interval_seconds)
 
-        end_ts = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        print(
-            f"[{end_ts}] [CRON] Ciclo concluído em {duration_ms}ms: {total} contas avaliadas, {refreshed} renovadas via OAuth.",
-            flush=True,
+        get_logger().info(
+            f"[CRON] Ciclo concluido em {duration_ms}ms: {total} contas avaliadas, "
+            f"{refreshed} renovadas via OAuth."
         )
         return entry
 

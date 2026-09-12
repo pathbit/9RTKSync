@@ -12,6 +12,7 @@ from .config import Settings
 from .cron import CronScheduler
 from .database import get_all_connections, update_connection_data
 from .discovery import HostDiscoveryEngine
+from .logs import get_logger
 from .models import ConnectionRecord
 from .normalizer import normalize_connection_data
 from .providers import ApiKeyProvider, BaseProvider, GenericOAuthProvider, GoogleProvider, LocalProvider
@@ -19,8 +20,8 @@ from .web.server import start_web_server
 
 
 def log_msg(prefix: str, text: str):
-    ts = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    print(f"[{ts}] [{prefix}] {text}", flush=True)
+    """Registra um evento no log persistente (e no stdout, se LOG_TO_STDOUT permitir)."""
+    get_logger().info(f"[{prefix}] {text}")
 
 
 class SyncEngine:

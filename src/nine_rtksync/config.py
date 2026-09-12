@@ -3,7 +3,15 @@
 import os
 import sys
 from dataclasses import dataclass
-from typing import List
+from typing import List, Optional, Tuple
+
+from .auth import (
+    RECOVERY_FILE_NAME,
+    ensure_recovery_hash,
+    read_stored_credentials,
+    resolve_recovery_hash,
+    verify_credentials,
+)
 
 
 def _is_truthy(val: str) -> bool:
@@ -40,13 +48,47 @@ class Settings:
     enable_web: bool = True
     host_home: str = ""
     web_host: str = "0.0.0.0"
-    web_port: int = 9190
+    web_port: int = 9090
     router_url: str = "http://127.0.0.1:20128"
     module: str = "all"
     credential_paths: List[str] = None
     dashboard_user: str = "admin"
     dashboard_password: str = "pathbit"
     cron_interval: int = 300
+    cron_enabled: bool = True
+    # Quando DASHBOARD_USER/DASHBOARD_PASSWORD vêm explicitamente do ambiente, elas
+    # passam a ser a fonte de verdade e o arquivo salvo pela tela é ignorado. É o
+    # que permite operar 100% headless (Docker, Kubernetes, CI) sem abrir o painel.
+    dashboard_auth_from_env: bool = False
+
+    def get_recovery_file_path(self) -> str:
+        """Caminho do arquivo que guarda o hash de recuperação gerado localmente."""
+        return os.path.join(os.path.dirname(self.get_auth_file_path()), RECOVERY_FILE_NAME)
+
+    def get_recovery_hash(self) -> str:
+        """Hash de recuperação em vigor (ambiente ou gerado no primeiro boot)."""
+        return resolve_recovery_hash(self.get_recovery_file_path())
+
+    def ensure_recovery_hash(self) -> Tuple[str, bool]:
+        """Garante a existência do hash de recuperação. Devolve (hash, foi_gerado_agora)."""
+        return ensure_recovery_hash(self.get_recovery_file_path())
+
+    def get_stored_credentials(self) -> Optional[Tuple[str, str]]:
+        """Credenciais gravadas pela tela, ou None quando o ambiente é autoritativo."""
+        if self.dashboard_auth_from_env:
+            return None
+        return read_stored_credentials(self.get_auth_file_path())
+
+    def verify_credentials(self, user: str, password: str) -> bool:
+        """Valida um par usuário/senha, incluindo a credencial de recuperação."""
+        return verify_credentials(
+            user,
+            password,
+            stored=self.get_stored_credentials(),
+            factory_user=self.dashboard_user,
+            factory_password=self.dashboard_password,
+            recovery_hash=self.get_recovery_hash(),
+        )
 
     def get_auth_file_path(self) -> str:
         """Retorna o caminho para persistência de credenciais do dashboard."""
@@ -58,7 +100,12 @@ class Settings:
         return os.path.join(base_dir, ".dashboard_auth.json")
 
     def get_auth_credentials(self) -> tuple[str, str]:
-        """Obtém credenciais ativas do dashboard (arquivo salvo -> env -> padrão)."""
+        """Obtém credenciais ativas do dashboard (env explícito -> arquivo salvo -> padrão)."""
+        # Ambiente explícito vence o arquivo: sem isso, uma única troca de senha
+        # pela tela deixaria DASHBOARD_USER/DASHBOARD_PASSWORD inertes para sempre.
+        if self.dashboard_auth_from_env:
+            return self.dashboard_user, self.dashboard_password
+
         auth_file = self.get_auth_file_path()
         if os.path.exists(auth_file):
             try:
@@ -80,6 +127,11 @@ class Settings:
 
     def update_auth_credentials(self, user: str, new_pass: str) -> bool:
         """Salva novas credenciais de acesso no arquivo seguro do dashboard."""
+        # Em modo headless o ambiente é imutável pela tela — gravar o arquivo aqui
+        # criaria um estado fantasma que get_auth_credentials nunca leria.
+        if self.dashboard_auth_from_env:
+            return False
+
         auth_file = self.get_auth_file_path()
         try:
             import json
@@ -132,9 +184,17 @@ class Settings:
             if not db_path:
                 db_path = candidate_dbs[0]
 
-        d_user = os.environ.get("DASHBOARD_USER", "admin")
-        d_pass = os.environ.get("DASHBOARD_PASSWORD", "pathbit")
+        # Só considera "vindo do ambiente" quando a variável foi realmente definida,
+        # para não transformar o padrão de fábrica em configuração autoritativa.
+        env_user = os.environ.get("DASHBOARD_USER")
+        env_pass = os.environ.get("DASHBOARD_PASSWORD")
+        d_user = env_user or "admin"
+        d_pass = env_pass or "pathbit"
+        auth_from_env = bool(env_user or env_pass)
+
         sync_int = int(os.environ.get("SYNC_INTERVAL", "300"))
+        cron_int = int(os.environ.get("CRON_INTERVAL", str(sync_int)))
+        cron_on = os.environ.get("CRON_ENABLED", "1") not in ("0", "false", "no")
 
         return cls(
             db_path=db_path,
@@ -143,11 +203,13 @@ class Settings:
             refresh_margin=int(os.environ.get("REFRESH_MARGIN", "900")),
             enable_web=os.environ.get("ENABLE_WEB_DASHBOARD", "1") not in ("0", "false", "no"),
             web_host=os.environ.get("WEB_HOST", "0.0.0.0"),
-            web_port=int(os.environ.get("WEB_PORT", "9190")),
+            web_port=int(os.environ.get("WEB_PORT", "9090")),
             router_url=os.environ.get("ROUTER_URL", "http://127.0.0.1:20128"),
             module=os.environ.get("MODULE", "all"),
             credential_paths=valid_paths,
             dashboard_user=d_user,
             dashboard_password=d_pass,
-            cron_interval=sync_int,
+            cron_interval=cron_int,
+            cron_enabled=cron_on,
+            dashboard_auth_from_env=auth_from_env,
         )

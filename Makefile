@@ -21,7 +21,7 @@ docker-build:
 	docker build -t 9rtksync:latest -t ghcr.io/pathbit/9rtksync:latest .
 
 docker-run:
-	docker run --rm -it --name 9RTKSync -p 9190:9190 9rtksync:latest
+	docker run --rm -it --name 9rtksync -p 9091:9090 9rtksync:latest
 
 clean:
 	find . -type d -name "__pycache__" -exec rm -rf {} +

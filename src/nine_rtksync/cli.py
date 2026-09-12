@@ -6,6 +6,7 @@ import sys
 from .config import Settings
 from .daemon import SyncEngine, run_daemon
 from .database import get_all_combos, get_all_connections
+from .logs import setup_logging
 from .web.server import start_web_server
 
 
@@ -97,7 +98,7 @@ def main():
     parser.add_argument(
         "--port",
         type=int,
-        help="Porta do servidor web embutido (padrão: 9190)",
+        help="Porta do servidor web embutido (padrão: 9090)",
     )
     parser.add_argument(
         "--user",
@@ -112,6 +113,19 @@ def main():
 
     args = parser.parse_args()
     settings = Settings.from_env()
+
+    # Log em arquivo precisa existir antes de qualquer evento do motor de sincronizacao.
+    logger = setup_logging(settings.db_path)
+
+    # Credencial de emergencia: gerada uma unica vez e registrada no log, para o
+    # operador conseguir voltar ao painel caso esqueca a senha trocada pela tela.
+    recovery_hash, generated_now = settings.ensure_recovery_hash()
+    if generated_now and recovery_hash:
+        logger.warning(
+            "[AUTH] Hash de recuperacao gerado. Para recuperar o acesso use usuario "
+            "'admin' e esta senha: %s (guarde-a; defina DASHBOARD_RECOVERY_HASH para fixar a sua)",
+            recovery_hash,
+        )
 
     if args.db_path:
         settings.db_path = args.db_path
