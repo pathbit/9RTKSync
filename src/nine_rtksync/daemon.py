@@ -134,7 +134,7 @@ def run_daemon(settings: Settings):
     signal.signal(signal.SIGTERM, handle_signal)
 
     print("=" * 70, flush=True)
-    print("⚡ 9RTKSYNC · 9ROUTER UNIVERSAL TOKEN & CONNECTION SYNCHRONIZER", flush=True)
+    print("[*] 9RTKSYNC · 9ROUTER UNIVERSAL TOKEN & CONNECTION SYNCHRONIZER", flush=True)
     print(f"   Banco SQLite: {settings.db_path}", flush=True)
     print(f"   Gateway URL:  {settings.router_url}", flush=True)
     print(f"   Host Home:    {engine.discovery.host_home}", flush=True)
@@ -154,7 +154,7 @@ def run_daemon(settings: Settings):
     # Inicializa o CronScheduler dedicado para renovação contínua de OAuth
     cron_scheduler = CronScheduler(
         sync_callback=engine.sync_all,
-        interval_seconds=settings.sync_interval,
+        interval_seconds=settings.cron_interval,
         name="9RTKSync-CronScheduler",
     )
 
@@ -170,12 +170,15 @@ def run_daemon(settings: Settings):
                 settings=settings,
                 cron_scheduler=cron_scheduler,
             )
-            print(f"🌐 Dashboard Web ativo em: http://{settings.web_host}:{settings.web_port}", flush=True)
+            print(f"[*] Dashboard Web ativo em: http://{settings.web_host}:{settings.web_port}", flush=True)
         except Exception as e:
-            print(f"⚠️ Não foi possível iniciar o dashboard web na porta {settings.web_port}: {e}", flush=True)
+            print(f"[!] Não foi possível iniciar o dashboard web na porta {settings.web_port}: {e}", flush=True)
 
     # Inicia o agendador em background
-    cron_scheduler.start()
+    if settings.cron_enabled:
+        cron_scheduler.start()
+    else:
+        print("[*] Agendador automatico desativado (CRON_ENABLED=0); use o disparo manual.", flush=True)
 
     while running:
         time.sleep(1)

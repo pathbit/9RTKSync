@@ -16,15 +16,15 @@ def print_status_table(settings: Settings):
         conns = get_all_connections(settings.db_path)
         combos = get_all_combos(settings.db_path)
     except Exception as e:
-        print(f"❌ Erro ao consultar banco SQLite ({settings.db_path}): {e}", file=sys.stderr)
+        print(f"[ERRO] Erro ao consultar banco SQLite ({settings.db_path}): {e}", file=sys.stderr)
         sys.exit(1)
 
     print("\n" + "=" * 76)
-    print("⚡ 9RTKSYNC · STATUS DAS CONEXÕES E COMBOS DO 9ROUTER")
+    print("[*] 9RTKSYNC · STATUS DAS CONEXÕES E COMBOS DO 9ROUTER")
     print(f"   Banco de Dados: {settings.db_path}")
     print("=" * 76)
 
-    print(f"\n🔌 Conexões Registradas ({len(conns)}):")
+    print(f"\n[*] Conexões Registradas ({len(conns)}):")
     print(f"  {'PROVEDOR':<16} {'NOME':<26} {'TIPO':<10} {'STATUS':<10} {'VALIDADE':<14}")
     print("  " + "-" * 74)
 
@@ -41,10 +41,10 @@ def print_status_table(settings: Settings):
         else:
             val_str = "Ilimitado"
 
-        status_icon = "✅" if c.health_status in ("ativo", "sem_expiracao") else ("⚠️" if c.health_status == "expirando_em_breve" else "❌")
+        status_icon = "[ok]" if c.health_status in ("ativo", "sem_expiracao") else ("[!]" if c.health_status == "expirando_em_breve" else "[ERRO]")
         print(f"  {c.provider:<16} {c.name[:25]:<26} {tipo:<10} {status_icon} {c.health_status:<7} {val_str:<14}")
 
-    print(f"\n🔀 Combos de Resiliência e Fallback ({len(combos)}):")
+    print(f"\n[*] Combos de Resiliência e Fallback ({len(combos)}):")
     print(f"  {'NOME DO COMBO':<26} {'TIPO':<12} {'MODELOS NA CASCATA'}")
     print("  " + "-" * 74)
 
