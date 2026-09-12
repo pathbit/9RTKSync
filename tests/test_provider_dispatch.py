@@ -17,7 +17,7 @@ protegem, em uma frase cada:
 
 import json
 import unittest
-from unittest import mock
+import unittest.mock
 
 from nine_rtksync.credential_check import (
     STATE_UNREACHABLE,
@@ -75,7 +75,7 @@ class TestVerificacaoNaoERenovacao(unittest.TestCase):
 
     def test_a_plain_validation_does_not_count_as_a_renewal(self):
         provider = ApiKeyProvider(validate_credentials=True)
-        with mock.patch(
+        with unittest.mock.patch(
             "nine_rtksync.providers.api_keys.check_api_key",
             return_value=CheckResult(state=STATE_VALID, detail="ok", checked_at="2026-01-01T00:00:00Z"),
         ):
@@ -109,7 +109,7 @@ class TestAChaveSondadaEAMaisNova(unittest.TestCase):
             return CheckResult(state=STATE_VALID, detail="ok", checked_at="2026-01-01T00:00:00Z")
 
         provider = ApiKeyProvider(discovery=DescobertaFalsa(), validate_credentials=True)
-        with mock.patch("nine_rtksync.providers.api_keys.check_api_key", side_effect=espiao):
+        with unittest.mock.patch("nine_rtksync.providers.api_keys.check_api_key", side_effect=espiao):
             provider.check_and_refresh(conexao("groq", apiKey="gsk_revogada"))
 
         self.assertEqual(vistas, ["gsk_nova"],
@@ -121,7 +121,7 @@ class TestCatalogoVazioNaoEQueda(unittest.TestCase):
         provider = LocalProvider()
         conn = conexao("openai-compatible-local", baseUrl="http://127.0.0.1:11434/v1")
         # Erro vazio = respondeu; lista vazia = nenhum modelo baixado ainda.
-        with mock.patch.object(LocalProvider, "discover_models", return_value=([], "")):
+        with unittest.mock.patch.object(LocalProvider, "discover_models", return_value=([], "")):
             _, data, msgs = provider.check_and_refresh(conn)
         self.assertEqual(data["testStatus"], "active")
         self.assertTrue(any("empty model catalog" in m for m in msgs))
@@ -129,7 +129,7 @@ class TestCatalogoVazioNaoEQueda(unittest.TestCase):
     def test_an_instance_that_does_not_answer_is_unreachable(self):
         provider = LocalProvider()
         conn = conexao("openai-compatible-local", baseUrl="http://127.0.0.1:11434/v1")
-        with mock.patch.object(LocalProvider, "discover_models", return_value=([], "Connection refused")):
+        with unittest.mock.patch.object(LocalProvider, "discover_models", return_value=([], "Connection refused")):
             _, data, _ = provider.check_and_refresh(conn)
         self.assertEqual(data["testStatus"], "unreachable")
 
@@ -154,7 +154,7 @@ class TestEnderecoDeclaradoVenceONome(unittest.TestCase):
             vistas.append(request.full_url)
             return CheckResult(state=STATE_VALID, detail="ok", checked_at="2026-01-01T00:00:00Z")
 
-        with mock.patch("nine_rtksync.credential_check._execute", side_effect=espiao):
+        with unittest.mock.patch("nine_rtksync.credential_check._execute", side_effect=espiao):
             check_api_key(provider, api_key, base_url=base_url)
         return vistas
 
@@ -181,3 +181,53 @@ class TestEnderecoDeclaradoVenceONome(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestAutenticacaoDoFornecedorSobrevive(unittest.TestCase):
+    """Trocar o endereço não pode trocar o jeito de autenticar.
+
+    A Anthropic espera `x-api-key` e o Gemini `x-goog-api-key`. Quando a conexão
+    declara um proxy próprio, só o **endereço** muda; substituir a sonda inteira
+    trocava o cabeçalho por um Bearer genérico, e o proxy recusava uma chave
+    perfeitamente válida.
+    """
+
+    def cabecalhos_da_sonda(self, provider, base_url):
+        vistos = {}
+
+        def espiao(request, timeout, opener=None, spec_invalid=()):
+            vistos.update({k.lower(): v for k, v in request.header_items()})
+            vistos["__url__"] = request.full_url
+            return CheckResult(state=STATE_VALID, detail="ok", checked_at="2026-01-01T00:00:00Z")
+
+        with unittest.mock.patch("nine_rtksync.credential_check._execute", side_effect=espiao):
+            check_api_key(provider, "a-chave", base_url=base_url)
+        return vistos
+
+    def test_a_proxied_anthropic_keeps_its_x_api_key_header(self):
+        vistos = self.cabecalhos_da_sonda("anthropic", "https://proxy.interno.example/v1")
+        self.assertIn("proxy.interno.example", vistos["__url__"])
+        self.assertEqual(vistos.get("x-api-key"), "a-chave")
+        self.assertNotIn("authorization", vistos)
+
+    def test_a_proxied_gemini_keeps_its_google_header_and_its_400_rule(self):
+        vistos = self.cabecalhos_da_sonda("gemini", "https://proxy.interno.example/v1")
+        self.assertEqual(vistos.get("x-goog-api-key"), "a-chave")
+
+    def test_a_provider_that_uses_bearer_still_uses_bearer(self):
+        vistos = self.cabecalhos_da_sonda("groq", "https://proxy.interno.example/v1")
+        self.assertEqual(vistos.get("authorization"), "Bearer a-chave")
+
+
+class TestCatalogoQueEsvaziou(unittest.TestCase):
+    def test_an_instance_that_lost_every_model_stops_showing_them(self):
+        conn = conexao(
+            "openai-compatible-local",
+            baseUrl="http://127.0.0.1:11434/v1",
+            discoveredModels=["llama3.2:3b"],
+            testStatus="active",
+        )
+        with unittest.mock.patch.object(LocalProvider, "discover_models", return_value=([], "")):
+            _, data, _ = LocalProvider().check_and_refresh(conn)
+        self.assertIsNotNone(data, "esvaziar o catalogo e uma mudanca que precisa ser gravada")
+        self.assertEqual(data["discoveredModels"], [])

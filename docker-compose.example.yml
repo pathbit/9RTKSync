@@ -52,6 +52,12 @@ services:
       # Credencial de emergencia (usuario 'admin' + este valor como senha).
       # Se omitida, e gerada no primeiro boot e registrada no arquivo de log.
       # - DASHBOARD_RECOVERY_HASH=
+      # Validacao viva de credenciais: pergunta ao provedor se a chave ainda e
+      # aceita, em vez de assumir que uma conexao esta saudavel por carregar uma
+      # credencial. Anunciadas no .env.example e lidas pelo Settings, faltava
+      # repassa-las ao container.
+      - CREDENTIAL_CHECK_ENABLED=${CREDENTIAL_CHECK_ENABLED:-1}
+      - CREDENTIAL_CHECK_TIMEOUT=${CREDENTIAL_CHECK_TIMEOUT:-8}
       - LOG_DIR=${LOG_DIR:-/app/data/logs}
       - LOG_RETENTION_DAYS=${LOG_RETENTION_DAYS:-30}
       - LOG_LEVEL=${LOG_LEVEL:-INFO}

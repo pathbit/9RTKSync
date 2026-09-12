@@ -170,6 +170,10 @@ class SyncEngine:
 
             summary["details"].append(conn_detail)
 
+        # O agendador deriva o resultado do ciclo de summary["success"]. Sem
+        # isto, um provider que levantou excecao aparecia no historico e o ciclo
+        # ainda era anunciado como bem-sucedido.
+        summary["success"] = not summary.get("errors")
         return summary
 
 

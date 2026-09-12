@@ -5,7 +5,7 @@ import os
 import shutil
 import tempfile
 import unittest
-from unittest import mock
+import unittest.mock
 
 from nine_rtksync.discovery import HostDiscoveryEngine
 from nine_rtksync.models import ConnectionRecord
@@ -129,7 +129,7 @@ class TestDiscoveryEngine(unittest.TestCase):
         # O primeiro elemento conta renovacao de credencial; uma sondagem local
         # nunca renova nada, entao e sempre False. O que prova que funcionou e o
         # dicionario devolvido para gravacao.
-        with mock.patch.object(
+        with unittest.mock.patch.object(
             LocalProvider, "discover_models", return_value=(["llama3.2:3b", "qwen2.5:7b"], "")
         ):
             renewed, data, msgs = lp.check_and_refresh(conn_ollama)
@@ -139,7 +139,7 @@ class TestDiscoveryEngine(unittest.TestCase):
         self.assertEqual(data["discoveredModels"], ["llama3.2:3b", "qwen2.5:7b"])
 
         # An instance that stops answering must not be reported as healthy.
-        with mock.patch.object(
+        with unittest.mock.patch.object(
             LocalProvider, "discover_models", return_value=([], "Connection refused")
         ):
             renewed, data, msgs = lp.check_and_refresh(conn_ollama)

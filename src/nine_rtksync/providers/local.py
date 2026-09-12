@@ -105,7 +105,10 @@ class LocalProvider(BaseProvider):
         # Erro vazio significa que a instancia respondeu -- com catalogo cheio ou
         # vazio. Uma instalacao recem-feita, sem modelo baixado, esta no ar.
         if models or not probe_error:
-            if models and data.get("discoveredModels") != models:
+            # Inclui o caso de esvaziar: uma instancia que tinha modelos e
+            # passou a nao ter precisa deixar de exibi-los, senao a tela mostra
+            # para sempre um catalogo que nao existe mais.
+            if data.get("discoveredModels") != models:
                 data["discoveredModels"] = models
                 modified = True
             if models:
