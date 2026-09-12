@@ -42,7 +42,7 @@ class GenericOAuthProvider(BaseProvider):
                 if local.get("refreshToken"):
                     data["refreshToken"] = local["refreshToken"]
                 data["expiresAt"] = now_ms + (3599 * 1000)
-                data["testStatus"] = "ok"
+                data["testStatus"] = "active"
                 src = local.get("source_path", "host")
                 messages.append(f"Token synchronized from host local credential ({src})")
                 return True, data, messages
@@ -99,7 +99,7 @@ class GenericOAuthProvider(BaseProvider):
                         now_ms = int(time.time() * 1000)
                         exp_in = int(res_data.get("expires_in", 3600))
                         data["expiresAt"] = now_ms + (exp_in * 1000)
-                        data["testStatus"] = "ok"
+                        data["testStatus"] = "active"
                         messages.append(f"OAuth token renewed successfully via endpoint ({exp_in}s)")
                         return True, data, messages
             except Exception as e:

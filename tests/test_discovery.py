@@ -125,7 +125,7 @@ class TestDiscoveryEngine(unittest.TestCase):
         self.assertTrue(lp.can_handle(conn_ollama))
         mod, data, msgs = lp.check_and_refresh(conn_ollama)
         self.assertTrue(mod)
-        self.assertEqual(data["testStatus"], "ok")
+        self.assertEqual(data["testStatus"], "active")
 
 
 if __name__ == "__main__":

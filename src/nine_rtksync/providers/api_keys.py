@@ -51,11 +51,11 @@ class ApiKeyProvider(BaseProvider):
             messages.append("Proactively removed rateLimitedUntil lock")
 
         # 3. Update health status stamp if necessary
-        if not data.get("testStatus") or data.get("testStatus") != "ok":
-            data["testStatus"] = "ok"
+        if not data.get("testStatus") or data.get("testStatus") != "active":
+            data["testStatus"] = "active"
             data["lastTested"] = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
             modified = True
-            messages.append("Connection status marked as operational (ok)")
+            messages.append("Connection status marked as operational (active)")
 
         if not messages:
             messages.append("API key active and healthy")

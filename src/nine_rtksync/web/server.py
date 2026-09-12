@@ -3,17 +3,28 @@
 import base64
 import json
 import os
+import sys
 import threading
 import time
 import urllib.error
 import urllib.request
 from http import HTTPStatus
-from http.server import BaseHTTPRequestHandler, HTTPServer
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from typing import Any, Callable, Dict, Optional
 
 from ..config import Settings
 from ..database import get_all_combos, get_all_connections
 from ..models import ConnectionRecord
+
+
+class QuietThreadingHTTPServer(ThreadingHTTPServer):
+    daemon_threads = True
+
+    def handle_error(self, request, client_address):
+        ex = sys.exc_info()[1]
+        if isinstance(ex, (BrokenPipeError, ConnectionResetError, ConnectionAbortedError)):
+            return
+        super().handle_error(request, client_address)
 
 
 class DashboardHandler(BaseHTTPRequestHandler):
@@ -24,6 +35,8 @@ class DashboardHandler(BaseHTTPRequestHandler):
     cron_scheduler: Optional[Any] = None
     db_path: str = ""
     router_url: str = ""
+    _last_gw_check: float = 0.0
+    _last_gw_ok: bool = True
 
     def log_message(self, format, *args):
         pass
@@ -97,27 +110,35 @@ class DashboardHandler(BaseHTTPRequestHandler):
         db_ok = bool(self.db_path and os.path.exists(self.db_path))
         router_ok = True
         if self.router_url:
-            try:
-                req = urllib.request.Request(
-                    self.router_url,
-                    headers={"User-Agent": "9RTKSync-Healthcheck/1.0"},
-                )
-                with urllib.request.urlopen(req, timeout=3.0) as resp:
-                    router_ok = resp.status < 500
-            except urllib.error.HTTPError as e:
-                router_ok = e.code < 500
-            except Exception:
-                router_ok = False
+            now = time.time()
+            if now - DashboardHandler._last_gw_check < 15.0:
+                router_ok = DashboardHandler._last_gw_ok
+            else:
+                try:
+                    req = urllib.request.Request(
+                        self.router_url,
+                        headers={"User-Agent": "9RTKSync-Healthcheck/1.0"},
+                    )
+                    with urllib.request.urlopen(req, timeout=3.0) as resp:
+                        router_ok = resp.status < 500
+                except urllib.error.HTTPError as e:
+                    router_ok = e.code < 500
+                except Exception:
+                    router_ok = False
+                DashboardHandler._last_gw_check = now
+                DashboardHandler._last_gw_ok = router_ok
 
         if db_ok and router_ok:
             self.send_response(HTTPStatus.OK)
             self.send_header("Content-Type", "text/plain")
+            self.send_header("Cache-Control", "no-store")
             self.end_headers()
             self.wfile.write(b"OK")
         else:
             reason = "DATABASE_NOT_READY" if not db_ok else "ROUTER_SERVICE_UNREACHABLE"
             self.send_response(HTTPStatus.SERVICE_UNAVAILABLE)
             self.send_header("Content-Type", "text/plain")
+            self.send_header("Cache-Control", "no-store")
             self.end_headers()
             self.wfile.write(reason.encode("utf-8"))
 
@@ -346,7 +367,7 @@ def start_web_server(
     DashboardHandler.settings = settings
     DashboardHandler.cron_scheduler = cron_scheduler
 
-    server = HTTPServer((host, port), DashboardHandler)
+    server = QuietThreadingHTTPServer((host, port), DashboardHandler)
     thread = threading.Thread(target=server.serve_forever, daemon=True)
     thread.start()
     return server

@@ -35,11 +35,11 @@ class LocalProvider(BaseProvider):
             messages.append("Removed rateLimitedUntil lock from local connection")
 
         # Ensure active status
-        if not data.get("testStatus") or data.get("testStatus") != "ok":
-            data["testStatus"] = "ok"
+        if not data.get("testStatus") or data.get("testStatus") != "active":
+            data["testStatus"] = "active"
             data["lastTested"] = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
             modified = True
-            messages.append("Local status marked as operational (ok)")
+            messages.append("Local status marked as operational (active)")
 
         if not messages:
             messages.append("Local service active and operational")

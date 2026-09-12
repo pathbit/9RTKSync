@@ -90,4 +90,4 @@ class ConnectionRecord:
             return "active"
         if self.data.get("baseUrl") or "ollama" in self.provider.lower():
             return "active"
-        return "active" if self.data.get("testStatus") == "ok" else "unknown"
+        return "active" if self.data.get("testStatus") in ("active", "ok", "success") else "unknown"
