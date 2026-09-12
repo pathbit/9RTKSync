@@ -1,4 +1,4 @@
-"""Motor de agendamento em background (CronScheduler) para o 9RTKSync."""
+"""Background scheduling engine (CronScheduler) for 9RTKSync."""
 
 import threading
 import time
@@ -9,13 +9,13 @@ from .logs import get_logger
 
 
 def _extract_log_lines(res: Any) -> List[str]:
-    """Extrai as acoes registradas pelo motor de sincronizacao neste ciclo.
+    """Extract the actions the sync engine recorded during this cycle.
 
-    Guarda so o que explica o resultado — erro, renovacao, auto-cura. Um ciclo
-    sem nada a fazer devolve lista vazia, e a tela mostra isso como tal.
+    Keeps only what explains the outcome — error, renewal, self-healing. A cycle
+    with nothing to do returns an empty list, and the screen shows it as such.
     """
     if not isinstance(res, dict):
-        return [f"Resultado inesperado do motor: {res!r}"]
+        return [f"Unexpected engine result: {res!r}"]
 
     lines: List[str] = []
     if res.get("error"):
@@ -33,7 +33,7 @@ def _extract_log_lines(res: Any) -> List[str]:
 
 
 class CronScheduler:
-    """Agendador em background que gerencia a renovação contínua de contas OAuth e integridade de conexões."""
+    """Background scheduler managing continuous OAuth account renewals and connection health."""
 
     def __init__(
         self,
@@ -49,7 +49,7 @@ class CronScheduler:
         self._stop_event = threading.Event()
         self._lock = threading.Lock()
 
-        # Métricas de execução
+        # Execution metrics
         self.total_runs = 0
         self.total_renewals = 0
         self.last_run_at: Optional[str] = None
@@ -58,7 +58,7 @@ class CronScheduler:
         self.history: List[Dict[str, Any]] = []
 
     def start(self):
-        """Inicia a thread de background do cron."""
+        """Start the background cron worker thread."""
         with self._lock:
             if self.is_running:
                 return
@@ -69,17 +69,17 @@ class CronScheduler:
             self._thread.start()
 
     def stop(self):
-        """Finaliza a thread de background graciosamente."""
+        """Gracefully stop the background cron thread."""
         with self._lock:
             self.is_running = False
             self._stop_event.set()
 
     def trigger_now(self) -> Dict[str, Any]:
-        """Dispara uma rodada síncrona manual imediata do cron."""
+        """Trigger an immediate synchronous run of the sync cycle."""
         return self._execute_cycle(reason="manual_trigger")
 
     def get_status(self) -> Dict[str, Any]:
-        """Retorna snapshot detalhado do estado do scheduler para a API e dashboard."""
+        """Return a detailed snapshot of the scheduler state for the API and dashboard."""
         with self._lock:
             return {
                 "active": self.is_running,
@@ -101,7 +101,7 @@ class CronScheduler:
         start_iso = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
 
         ts_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        get_logger().info(f"[CRON] Ciclo disparado ({reason}). Inspecionando conexoes de contas OAuth...")
+        get_logger().info(f"[CRON] Cycle triggered ({reason}). Inspecting OAuth account connections...")
 
         try:
             res = self.sync_callback()
@@ -134,13 +134,13 @@ class CronScheduler:
             self._update_next_run(self.interval_seconds)
 
         get_logger().info(
-            f"[CRON] Ciclo concluido em {duration_ms}ms: {total} contas avaliadas, "
-            f"{refreshed} renovadas via OAuth."
+            f"[CRON] Cycle completed in {duration_ms}ms: {total} accounts evaluated, "
+            f"{refreshed} renewed via OAuth."
         )
         return entry
 
     def _run_loop(self):
-        # Executa ciclo de inicialização inicial
+        # Execute startup sync cycle
         self._execute_cycle(reason="startup")
 
         while not self._stop_event.is_set():
@@ -149,3 +149,4 @@ class CronScheduler:
                 break
             if self.is_running:
                 self._execute_cycle(reason="scheduled_interval")
+

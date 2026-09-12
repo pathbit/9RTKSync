@@ -1,4 +1,4 @@
-"""Acesso e mutação segura do banco SQLite do 9Router."""
+"""Safe access and mutation for 9Router SQLite database."""
 
 import json
 import os
@@ -10,16 +10,16 @@ from .models import ConnectionRecord
 
 
 def get_db_connection(db_path: str) -> sqlite3.Connection:
-    """Abre conexão com o SQLite aplicando timeouts e WAL mode se possível."""
+    """Open connection to SQLite with timeout and Row factory."""
     if not os.path.exists(db_path):
-        raise FileNotFoundError(f"Banco SQLite não encontrado em: {db_path}")
+        raise FileNotFoundError(f"SQLite database not found at: {db_path}")
     conn = sqlite3.connect(db_path, timeout=15.0)
     conn.row_factory = sqlite3.Row
     return conn
 
 
 def get_all_connections(db_path: str) -> List[ConnectionRecord]:
-    """Lê todas as conexões cadastradas no 9Router."""
+    """Retrieve all registered connections from 9Router."""
     conn = get_db_connection(db_path)
     try:
         cursor = conn.cursor()
@@ -43,7 +43,7 @@ def get_all_connections(db_path: str) -> List[ConnectionRecord]:
 
 
 def update_connection_data(db_path: str, connection_id: str, new_data: Dict[str, Any]) -> bool:
-    """Atualiza o payload JSON da conexão e carimba updatedAt com ISO UTC."""
+    """Update connection JSON payload and timestamp updatedAt with UTC ISO string."""
     conn = get_db_connection(db_path)
     now_iso = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
     try:
@@ -66,14 +66,14 @@ def upsert_connection(
     data: Dict[str, Any],
     connection_id: Optional[str] = None,
 ) -> str:
-    """Insere ou atualiza uma conexão no SQLite garantindo formato compatível."""
+    """Insert or update a connection in SQLite ensuring compatible schema format."""
     conn = get_db_connection(db_path)
     now_iso = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
     try:
         cursor = conn.cursor()
         data_str = json.dumps(data)
 
-        # Procura por ID ou por provider
+        # Look up by ID or by provider
         target_id = connection_id
         if not target_id:
             cursor.execute("SELECT id FROM providerConnections WHERE provider = ?", (provider,))
@@ -106,8 +106,8 @@ def upsert_connection(
 
 def upsert_combos(db_path: str, combos_list: List[tuple]) -> int:
     """
-    Cadastra ou atualiza combos no 9Router sem violar a restrição única de combos.name.
-    combos_list: lista de tuplas (id, name, kind, models_json)
+    Register or update combos in 9Router without violating unique constraint on combos.name.
+    combos_list: list of tuples (id, name, kind, models_json)
     """
     conn = get_db_connection(db_path)
     now_iso = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
@@ -115,7 +115,7 @@ def upsert_combos(db_path: str, combos_list: List[tuple]) -> int:
     try:
         cursor = conn.cursor()
         for c_id, c_name, c_kind, c_models in combos_list:
-            # Busca por name ou por id
+            # Query by name or id
             cursor.execute("SELECT id FROM combos WHERE name = ? OR id = ?", (c_name, c_id))
             row = cursor.fetchone()
             if row:
@@ -140,7 +140,7 @@ def upsert_combos(db_path: str, combos_list: List[tuple]) -> int:
 
 
 def get_all_combos(db_path: str) -> List[Dict[str, Any]]:
-    """Devolve a lista de todos os combos registrados no banco."""
+    """Return all registered combos from database."""
     conn = get_db_connection(db_path)
     try:
         cursor = conn.cursor()

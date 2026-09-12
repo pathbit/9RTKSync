@@ -1,4 +1,4 @@
-"""Testes unitários para o provedor Google (GoogleProvider)."""
+"""Unit tests for the Google provider (GoogleProvider)."""
 
 import json
 import os
@@ -53,11 +53,11 @@ class TestGoogleProvider(unittest.TestCase):
         self.assertTrue(renewed)
         self.assertEqual(new_data["accessToken"], "new_token_host")
         self.assertEqual(new_data["refreshToken"], "new_refresh")
-        self.assertTrue(any("arquivo de credencial local do host" in n for n in notes))
+        self.assertTrue(any("host local credential file" in n for n in notes))
 
     def test_no_refresh_when_valid_and_no_local_override(self):
         prov = GoogleProvider(credential_paths=[])
-        future_ms = int(time.time() * 1000) + 3600000  # 60 min restantes
+        future_ms = int(time.time() * 1000) + 3600000  # 60 min remaining
         conn = ConnectionRecord(
             id="1",
             provider="antigravity",
@@ -70,8 +70,9 @@ class TestGoogleProvider(unittest.TestCase):
         renewed, new_data, notes = prov.check_and_refresh(conn, margin_seconds=900)
         self.assertFalse(renewed)
         self.assertIsNone(new_data)
-        self.assertTrue(any("Token válido por mais" in n for n in notes))
+        self.assertTrue(any("Token valid for another" in n for n in notes))
 
 
 if __name__ == "__main__":
     unittest.main()
+

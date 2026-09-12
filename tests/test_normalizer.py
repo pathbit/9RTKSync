@@ -1,4 +1,4 @@
-"""Testes unitários para o módulo normalizer.py."""
+"""Unit tests for the normalizer.py module."""
 
 import time
 import unittest
@@ -8,7 +8,7 @@ from nine_rtksync.normalizer import normalize_connection_data, parse_iso_or_str_
 
 class TestNormalizer(unittest.TestCase):
     def test_parse_iso_string_to_ms(self):
-        # 2026-09-12T12:00:00Z em epoch ms
+        # 2026-09-12T12:00:00Z in epoch ms
         iso = "2026-09-12T12:00:00Z"
         ms = parse_iso_or_str_to_ms(iso)
         self.assertIsInstance(ms, int)
@@ -34,10 +34,10 @@ class TestNormalizer(unittest.TestCase):
         self.assertTrue(modified)
         self.assertIsInstance(data["expiresAt"], int)
         self.assertGreater(data["expiresAt"], 1700000000000)
-        self.assertTrue(any("convertido de string ISO" in n for n in notes))
+        self.assertTrue(any("converted from ISO" in n for n in notes))
 
     def test_normalize_clears_expired_rate_limit(self):
-        past_ms = int(time.time() * 1000) - 60000  # 1 min atras
+        past_ms = int(time.time() * 1000) - 60000  # 1 min ago
         raw = {
             "apiKey": "sk-test",
             "rateLimitedUntil": past_ms,
@@ -47,7 +47,7 @@ class TestNormalizer(unittest.TestCase):
         self.assertTrue(modified)
         self.assertNotIn("rateLimitedUntil", data)
         self.assertEqual(data["backoffLevel"], 0)
-        self.assertTrue(any("rateLimitedUntil no passado foi removida" in n for n in notes))
+        self.assertTrue(any("Expired rateLimitedUntil" in n for n in notes))
 
     def test_normalize_preserves_intact_data(self):
         future_ms = int(time.time() * 1000) + 3600000
@@ -64,3 +64,4 @@ class TestNormalizer(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+

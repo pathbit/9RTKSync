@@ -1,4 +1,4 @@
-"""Daemon de sincronização contínua e auto-cura universal para o 9Router."""
+"""Continuous synchronization and universal self-healing daemon for 9Router."""
 
 import os
 import signal
@@ -20,12 +20,12 @@ from .web.server import start_web_server
 
 
 def log_msg(prefix: str, text: str):
-    """Registra um evento no log persistente (e no stdout, se LOG_TO_STDOUT permitir)."""
+    """Record an event in the persistent log (and on stdout, if LOG_TO_STDOUT allows)."""
     get_logger().info(f"[{prefix}] {text}")
 
 
 class SyncEngine:
-    """Motor de orquestração de conexões e sincronização."""
+    """Connection orchestration and synchronization engine."""
 
     def __init__(self, settings: Settings):
         self.settings = settings
@@ -41,9 +41,9 @@ class SyncEngine:
         ]
 
     def sync_all(self) -> Dict[str, Any]:
-        """Executa uma rodada completa de sincronização em todas as contas cadastradas."""
+        """Execute a full synchronization cycle across all registered accounts."""
         if not os.path.exists(self.settings.db_path):
-            log_msg("ERRO", f"Banco SQLite não encontrado em: {self.settings.db_path}")
+            log_msg("ERROR", f"SQLite database not found at: {self.settings.db_path}")
             return {"success": False, "error": "db_not_found"}
 
         summary = {
@@ -55,19 +55,19 @@ class SyncEngine:
             "details": [],
         }
 
-        # 1. Sincroniza combos de resiliência e fallback
+        # 1. Synchronize resilience and fallback combos
         try:
             combos_count = sync_combos(self.settings.db_path, module=self.settings.module)
             summary["combos_synced"] = combos_count
         except Exception as e:
-            log_msg("AVISO", f"Falha ao sincronizar combos: {e}")
+            log_msg("WARNING", f"Failed to synchronize combos: {e}")
 
-        # 2. Varre conexões registradas
+        # 2. Scan registered connections
         try:
             conns = get_all_connections(self.settings.db_path)
             summary["total_connections"] = len(conns)
         except Exception as e:
-            log_msg("ERRO", f"Falha ao ler conexões do SQLite: {e}")
+            log_msg("ERROR", f"Failed to read connections from SQLite: {e}")
             return {"success": False, "error": str(e)}
 
         for conn in conns:
@@ -78,20 +78,20 @@ class SyncEngine:
                 "actions": [],
             }
 
-            # A. Auto-cura e normalização de formato
+            # A. Self-healing and format normalization
             normalized, new_data, norm_notes = normalize_connection_data(conn.data)
             if normalized:
                 summary["normalized"] += 1
                 conn.data = new_data
                 for note in norm_notes:
-                    log_msg("CURA", f"[{conn.provider} · {conn.name}] {note}")
+                    log_msg("HEAL", f"[{conn.provider} · {conn.name}] {note}")
                     conn_detail["actions"].append(note)
                 try:
                     update_connection_data(self.settings.db_path, conn.id, new_data)
                 except Exception as e:
-                    log_msg("ERRO", f"Falha ao gravar normalização no banco: {e}")
+                    log_msg("ERROR", f"Failed to persist normalization to database: {e}")
 
-            # B. Renovação OAuth ou teste de liveness
+            # B. OAuth renewal or liveness check
             handled = False
             for p in self.providers:
                 if p.can_handle(conn):
@@ -107,13 +107,13 @@ class SyncEngine:
                         if renewed and refreshed_data:
                             summary["refreshed"] += 1
                             update_connection_data(self.settings.db_path, conn.id, refreshed_data)
-                            log_msg("SUCESSO", f"[{conn.provider} · {conn.name}] Credenciais atualizadas com sucesso no SQLite")
+                            log_msg("SUCCESS", f"[{conn.provider} · {conn.name}] Credentials updated successfully in SQLite")
                     except Exception as e:
-                        log_msg("FALHA", f"[{conn.provider} · {conn.name}] Erro no provedor: {e}")
+                        log_msg("FAILURE", f"[{conn.provider} · {conn.name}] Provider error: {e}")
                     break
 
             if not handled:
-                log_msg("INFO", f"[{conn.provider} · {conn.name}] Provedor sem manipulador específico; formato preservado")
+                log_msg("INFO", f"[{conn.provider} · {conn.name}] Provider without specific handler; format preserved")
 
             summary["details"].append(conn_detail)
 
@@ -121,13 +121,13 @@ class SyncEngine:
 
 
 def run_daemon(settings: Settings):
-    """Executa o daemon perpétuo com tratamento de sinais e servidor web opcional."""
+    """Run the continuous daemon loop with signal handling and optional web server."""
     engine = SyncEngine(settings)
     running = True
 
     def handle_signal(sig, frame):
         nonlocal running
-        print(f"\n[!] Sinal {sig} recebido. Encerrando 9RTKSync graciosamente...", flush=True)
+        print(f"\n[!] Signal {sig} received. Shutting down 9RTKSync gracefully...", flush=True)
         running = False
 
     signal.signal(signal.SIGINT, handle_signal)
@@ -135,30 +135,30 @@ def run_daemon(settings: Settings):
 
     print("=" * 70, flush=True)
     print("[*] 9RTKSYNC · 9ROUTER UNIVERSAL TOKEN & CONNECTION SYNCHRONIZER", flush=True)
-    print(f"   Banco SQLite: {settings.db_path}", flush=True)
+    print(f"   SQLite DB:    {settings.db_path}", flush=True)
     print(f"   Gateway URL:  {settings.router_url}", flush=True)
     print(f"   Host Home:    {engine.discovery.host_home}", flush=True)
-    print(f"   Intervalo: {settings.sync_interval}s · Margem de Renovação: {settings.refresh_margin}s", flush=True)
+    print(f"   Interval:     {settings.sync_interval}s · Refresh Margin: {settings.refresh_margin}s", flush=True)
     print("=" * 70, flush=True)
 
-    # Varredura inicial de credenciais disponíveis no host
+    # Initial scan of available host credentials
     discovered = engine.discovery.discover_all()
     found_any = False
     for prov, info in discovered.items():
         if info:
             found_any = True
-            log_msg("DISCOVERY", f"Credencial detectada no host: [{prov}] -> {info.get('source_path')}")
+            log_msg("DISCOVERY", f"Host credential detected: [{prov}] -> {info.get('source_path')}")
     if not found_any:
-        log_msg("DISCOVERY", f"Nenhuma credencial local pré-existente em {engine.discovery.host_home}")
+        log_msg("DISCOVERY", f"No pre-existing local credentials detected in {engine.discovery.host_home}")
 
-    # Inicializa o CronScheduler dedicado para renovação contínua de OAuth
+    # Initialize dedicated CronScheduler for continuous OAuth renewal
     cron_scheduler = CronScheduler(
         sync_callback=engine.sync_all,
         interval_seconds=settings.cron_interval,
         name="9RTKSync-CronScheduler",
     )
 
-    # Inicia servidor web embutido se habilitado
+    # Start embedded web server if enabled
     if settings.enable_web:
         try:
             start_web_server(
@@ -170,18 +170,19 @@ def run_daemon(settings: Settings):
                 settings=settings,
                 cron_scheduler=cron_scheduler,
             )
-            print(f"[*] Dashboard Web ativo em: http://{settings.web_host}:{settings.web_port}", flush=True)
+            print(f"[*] Web Dashboard active at: http://{settings.web_host}:{settings.web_port}", flush=True)
         except Exception as e:
-            print(f"[!] Não foi possível iniciar o dashboard web na porta {settings.web_port}: {e}", flush=True)
+            print(f"[!] Could not start web dashboard on port {settings.web_port}: {e}", flush=True)
 
-    # Inicia o agendador em background
+    # Start background scheduler
     if settings.cron_enabled:
         cron_scheduler.start()
     else:
-        print("[*] Agendador automatico desativado (CRON_ENABLED=0); use o disparo manual.", flush=True)
+        print("[*] Automatic scheduler disabled (CRON_ENABLED=0); use manual trigger.", flush=True)
 
     while running:
         time.sleep(1)
 
     cron_scheduler.stop()
-    print("[*] 9RTKSync finalizado com sucesso.", flush=True)
+    print("[*] 9RTKSync terminated cleanly.", flush=True)
+

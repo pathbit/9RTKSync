@@ -1,4 +1,4 @@
-"""Testes unitários para o módulo cli.py."""
+"""Unit tests for the cli.py module."""
 
 import io
 import os
@@ -60,7 +60,7 @@ class TestCLI(unittest.TestCase):
         with patch("sys.stdout", f):
             print_status_table(settings)
         output = f.getvalue()
-        self.assertIn("9RTKSYNC · STATUS DAS CONEXÕES E COMBOS DO 9ROUTER", output)
+        self.assertIn("9RTKSYNC · 9ROUTER CONNECTIONS AND COMBOS STATUS", output)
         self.assertIn("antigravity", output)
         self.assertIn("Google Antigravity Pro", output)
 
@@ -70,8 +70,9 @@ class TestCLI(unittest.TestCase):
             with patch("sys.argv", ["9rtksync", "--db-path", self.db_path, "--once"]):
                 main()
         output = f.getvalue()
-        self.assertIn("Sincronização concluída", output)
+        self.assertIn("Synchronization completed", output)
 
 
 if __name__ == "__main__":
     unittest.main()
+

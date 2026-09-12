@@ -1,4 +1,4 @@
-"""Manipulador para provedores locais e compatíveis com OpenAI (Ollama, vLLM, LMStudio)."""
+"""Handler for local and OpenAI-compatible providers (Ollama, vLLM, LMStudio)."""
 
 import json
 import urllib.error
@@ -9,24 +9,24 @@ from typing import Any, Dict, List, Optional, Tuple
 from ..models import ConnectionRecord
 from .base import BaseProvider
 
-# Endpoints de catálogo, na ordem de tentativa: nativo do Ollama e o padrão OpenAI.
+# Catalog endpoints, in attempt order: Ollama-native and the OpenAI standard.
 MODEL_CATALOG_PATHS = ("/api/tags", "/v1/models", "/models")
 PROBE_TIMEOUT_SECONDS = 3.0
 
 
 class LocalProvider(BaseProvider):
-    """Monitor de integridade para instâncias locais e proxies compatíveis com OpenAI."""
+    """Health monitor for local instances and OpenAI-compatible proxies."""
 
     def can_handle(self, conn: ConnectionRecord) -> bool:
         return conn.is_local
 
     def discover_models(self, base_url: str, api_key: str = "") -> Tuple[List[str], str]:
-        """Consulta o catálogo da instância local. Devolve (modelos, erro)."""
+        """Query the local instance catalog. Returns (models, error)."""
         if not base_url:
-            return [], "baseUrl não declarada na conexão"
+            return [], "baseUrl not declared on the connection"
 
         root = base_url.rstrip("/")
-        # Uma baseUrl no formato OpenAI já termina em /v1; a raiz serve /api/tags.
+        # An OpenAI-shaped baseUrl already ends in /v1; the root serves /api/tags.
         origin = root[: -len("/v1")] if root.endswith("/v1") else root
         last_error = ""
 
@@ -46,11 +46,11 @@ class LocalProvider(BaseProvider):
             if models:
                 return models, ""
 
-        return [], last_error or "nenhum modelo retornado pela instância local"
+        return [], last_error or "no model returned by the local instance"
 
     @staticmethod
     def _extract_model_names(payload: Any) -> List[str]:
-        """Extrai nomes de modelo dos formatos do Ollama (/api/tags) e da OpenAI (/v1/models)."""
+        """Extract model names from the Ollama (/api/tags) and OpenAI (/v1/models) shapes."""
         if not isinstance(payload, dict):
             return []
         entries = payload.get("models") or payload.get("data") or []
@@ -71,14 +71,14 @@ class LocalProvider(BaseProvider):
         data = dict(conn.data)
         modified = False
 
-        # Remove qualquer trava de rate limit acidental
+        # Remove any accidental rate limit locks
         if data.get("rateLimitedUntil"):
             del data["rateLimitedUntil"]
             data["backoffLevel"] = 0
             modified = True
-            messages.append("Trava de rateLimitedUntil removida da conexão local")
+            messages.append("Removed rateLimitedUntil lock from local connection")
 
-        # Descobre os modelos servidos pela instância local, para o painel exibi-los.
+        # Discover the models the local instance serves, so the panel can show them.
         models, probe_error = self.discover_models(conn.base_url or "", conn.api_key or "")
         now_iso = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
 
@@ -86,17 +86,17 @@ class LocalProvider(BaseProvider):
             if data.get("discoveredModels") != models:
                 data["discoveredModels"] = models
                 modified = True
-            messages.append(f"Instância local respondeu com {len(models)} modelo(s): {', '.join(models[:5])}")
+            messages.append(f"Local instance answered with {len(models)} model(s): {', '.join(models[:5])}")
 
             if data.get("testStatus") != "ok":
                 data["testStatus"] = "ok"
                 data["lastTested"] = now_iso
                 modified = True
-                messages.append("Status local marcado como operacional (ok)")
+                messages.append("Local status marked as operational (ok)")
         else:
-            # Sem resposta do catálogo a conexão não é dada como saudável às cegas:
-            # é exatamente o caso "o Ollama local caiu e ninguém percebeu".
-            messages.append(f"Instância local não respondeu ao catálogo de modelos: {probe_error}")
+            # With no catalog response the connection is not assumed healthy: this is
+            # exactly the "the local Ollama went down and nobody noticed" case.
+            messages.append(f"Local instance did not answer the model catalog: {probe_error}")
             if data.get("testStatus") != "unreachable":
                 data["testStatus"] = "unreachable"
                 data["lastError"] = probe_error
@@ -104,3 +104,4 @@ class LocalProvider(BaseProvider):
                 modified = True
 
         return modified, data if modified else None, messages
+

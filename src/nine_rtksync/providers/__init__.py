@@ -1,4 +1,4 @@
-"""Provedores de sincronização e auto-renovação de credenciais do 9rtksync."""
+"""Credential synchronization and auto-renewal providers for 9RTKSync."""
 
 from .base import BaseProvider
 from .google import GoogleProvider
@@ -13,3 +13,4 @@ __all__ = [
     "ApiKeyProvider",
     "LocalProvider",
 ]
+

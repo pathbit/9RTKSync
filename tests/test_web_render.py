@@ -44,6 +44,27 @@ class TestRenderHelpers(unittest.TestCase):
         self.assertEqual(render.format_duration(3660), "1h 01min")
         self.assertEqual(render.format_duration(90000), "1d 1h")
 
+    def test_every_health_status_has_a_badge_and_a_translation(self):
+        """Trava o acoplamento: o modelo devolve codigos que o render precisa conhecer."""
+        from nine_rtksync import i18n
+
+        produced = {"active", "expiring_soon", "expired", "rate_limited", "no_expiration", "unknown"}
+        self.assertEqual(produced - set(render.HEALTH_PRESENTATION), set())
+        for status in produced:
+            for lang in i18n.LANGUAGES:
+                label = i18n.translate(f"health.{status}", lang)
+                self.assertNotEqual(label, f"health.{status}", f"sem traducao: {status}/{lang}")
+            self.assertNotIn("Unknown", render.health_badge(status, "en")) if status != "unknown" else None
+
+    def test_health_badge_reflects_the_model_status(self):
+        now_ms = int(time.time() * 1000)
+        expired = make_conn("antigravity", "AG", {
+            "accessToken": "t", "refreshToken": "r", "expiresAt": now_ms - 1000,
+        })
+        self.assertEqual(expired.health_status, "expired")
+        self.assertIn("Expired", render.health_badge(expired.health_status, "en"))
+        self.assertIn("text-bg-danger", render.health_badge(expired.health_status, "en"))
+
     def test_html_is_escaped(self):
         self.assertEqual(render.esc("<script>alert(1)</script>"), "&lt;script&gt;alert(1)&lt;/script&gt;")
 

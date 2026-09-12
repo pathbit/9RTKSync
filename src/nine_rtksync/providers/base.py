@@ -1,4 +1,4 @@
-"""Interface base para provedores de autenticação e credenciais."""
+"""Base interface for authentication and credential providers."""
 
 from abc import ABC, abstractmethod
 from typing import Any, Dict, List, Optional, Tuple
@@ -7,11 +7,11 @@ from ..models import ConnectionRecord
 
 
 class BaseProvider(ABC):
-    """Classe base para manipuladores de provedores."""
+    """Base class for credential provider handlers."""
 
     @abstractmethod
     def can_handle(self, conn: ConnectionRecord) -> bool:
-        """Determina se este provedor atende a conexão especificada."""
+        """Determine whether this provider handles the specified connection."""
         pass
 
     @abstractmethod
@@ -19,7 +19,8 @@ class BaseProvider(ABC):
         self, conn: ConnectionRecord, margin_seconds: int = 900, **kwargs
     ) -> Tuple[bool, Optional[Dict[str, Any]], List[str]]:
         """
-        Verifica a conexão e realiza renovação preventiva se necessário.
-        Devolve: (renovado: bool, dados_atualizados: Optional[dict], mensagens: list[str])
+        Verify connection and perform proactive renewal if necessary.
+        Returns: (renewed: bool, updated_data: Optional[dict], messages: list[str])
         """
         pass
+

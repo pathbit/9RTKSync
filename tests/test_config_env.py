@@ -1,4 +1,4 @@
-"""Testes unitarios para carregamento de variaveis de ambiente e arquivo .env."""
+"""Unit tests for environment variable and .env file loading."""
 
 import os
 import tempfile
@@ -16,22 +16,22 @@ class TestConfigEnv(unittest.TestCase):
 
     def test_load_dotenv_parses_key_values_and_quotes(self):
         with tempfile.NamedTemporaryFile(mode="w+", delete=False, encoding="utf-8") as f:
-            f.write("# Comentario\n")
-            f.write("TEST_ENV_VAR1=valor_um\n")
-            f.write('TEST_ENV_VAR2="valor com aspas"\n')
-            f.write("TEST_ENV_VAR3='valor com aspas simples'\n")
-            f.write("TEST_EXISTING=novo_valor\n")
+            f.write("# Comment\n")
+            f.write("TEST_ENV_VAR1=value_one\n")
+            f.write('TEST_ENV_VAR2="value with quotes"\n')
+            f.write("TEST_ENV_VAR3='value with single quotes'\n")
+            f.write("TEST_EXISTING=new_value\n")
             temp_path = f.name
 
         try:
-            os.environ["TEST_EXISTING"] = "valor_original"
+            os.environ["TEST_EXISTING"] = "original_value"
             load_dotenv(temp_path)
 
-            self.assertEqual(os.environ.get("TEST_ENV_VAR1"), "valor_um")
-            self.assertEqual(os.environ.get("TEST_ENV_VAR2"), "valor com aspas")
-            self.assertEqual(os.environ.get("TEST_ENV_VAR3"), "valor com aspas simples")
-            # Nao deve sobrescrever variaveis ja existentes
-            self.assertEqual(os.environ.get("TEST_EXISTING"), "valor_original")
+            self.assertEqual(os.environ.get("TEST_ENV_VAR1"), "value_one")
+            self.assertEqual(os.environ.get("TEST_ENV_VAR2"), "value with quotes")
+            self.assertEqual(os.environ.get("TEST_ENV_VAR3"), "value with single quotes")
+            # Should not overwrite existing environment variables
+            self.assertEqual(os.environ.get("TEST_EXISTING"), "original_value")
         finally:
             if os.path.exists(temp_path):
                 os.remove(temp_path)
@@ -59,3 +59,4 @@ class TestConfigEnv(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+

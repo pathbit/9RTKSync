@@ -1,4 +1,4 @@
-"""Testes unitários para o módulo combos.py."""
+"""Unit tests for the combos.py module."""
 
 import json
 import unittest
@@ -16,7 +16,7 @@ class TestCombos(unittest.TestCase):
         self.assertIn("arsenal-rapido", names)
         self.assertIn("arsenal-offline", names)
 
-        # Valida que todos os modelos sao arrays JSON parseáveis
+        # Validate that all models are parseable JSON arrays
         for _, name, kind, models_raw in combos:
             self.assertEqual(kind, "llm")
             models = json.loads(models_raw)
@@ -33,3 +33,4 @@ class TestCombos(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+

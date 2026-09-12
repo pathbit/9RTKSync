@@ -1,4 +1,4 @@
-"""Gerenciador de combos de fallback e resiliência no SQLite do 9Router."""
+"""Manager for resilience and fallback combos in 9Router SQLite database."""
 
 import json
 from typing import List, Tuple
@@ -8,8 +8,8 @@ from .database import upsert_combos
 
 def get_default_combos(module: str = "all") -> List[Tuple[str, str, str, str]]:
     """
-    Retorna a lista de combos padrão padronizados.
-    Formato: (id, name, kind, models_json)
+    Return list of standard resilience combos.
+    Format: (id, name, kind, models_json)
     """
     combos = [
         (
@@ -78,6 +78,6 @@ def get_default_combos(module: str = "all") -> List[Tuple[str, str, str, str]]:
 
 
 def sync_combos(db_path: str, module: str = "all") -> int:
-    """Insere ou atualiza os combos padrão no banco SQLite."""
+    """Insert or update standard combos in SQLite database."""
     combos = get_default_combos(module)
     return upsert_combos(db_path, combos)

@@ -1,4 +1,4 @@
-"""Testes de autenticação HTTP Basic Auth e rotas protegidas no 9RTKSync."""
+"""HTTP Basic Auth authentication and protected routes tests for 9RTKSync."""
 
 import base64
 import json
@@ -44,35 +44,35 @@ class TestWebAuth(unittest.TestCase):
         cls.tmp_dir.cleanup()
 
     def test_healthz_unauthenticated(self):
-        """A rota /healthz deve responder OK sem exigir autenticação."""
+        """The /healthz route must respond 200 OK without requiring authentication."""
         url = f"http://127.0.0.1:{self.settings.web_port}/healthz"
         with urllib.request.urlopen(url, timeout=3.0) as resp:
             self.assertEqual(resp.status, 200)
             self.assertEqual(resp.read(), b"OK")
 
     def test_dashboard_rejects_without_auth(self):
-        """Acesso à raiz sem credenciais deve retornar 401 Unauthorized com WWW-Authenticate."""
+        """Accessing root without credentials must return 401 Unauthorized with WWW-Authenticate."""
         url = f"http://127.0.0.1:{self.settings.web_port}/"
         try:
             urllib.request.urlopen(url, timeout=3.0)
-            self.fail("Deveria ter lançado HTTPError 401")
+            self.fail("Expected HTTPError 401")
         except urllib.error.HTTPError as e:
             self.assertEqual(e.code, 401)
             self.assertIn("Basic", e.headers.get("WWW-Authenticate", ""))
 
     def test_dashboard_rejects_invalid_auth(self):
-        """Acesso com credenciais inválidas deve retornar 401."""
+        """Access with invalid credentials must return 401."""
         url = f"http://127.0.0.1:{self.settings.web_port}/api/status"
         bad_token = base64.b64encode(b"admin:wrongpass").decode("utf-8")
         req = urllib.request.Request(url, headers={"Authorization": f"Basic {bad_token}"})
         try:
-            urllib.request.urlopen(req, timeout=3.0)
-            self.fail("Deveria ter lançado HTTPError 401")
+            urllib.request.urlopen(url, timeout=3.0)
+            self.fail("Expected HTTPError 401")
         except urllib.error.HTTPError as e:
             self.assertEqual(e.code, 401)
 
     def test_dashboard_accepts_valid_auth(self):
-        """Acesso com credenciais corretas deve retornar 200 OK."""
+        """Access with valid credentials must return 200 OK."""
         url = f"http://127.0.0.1:{self.settings.web_port}/api/status"
         valid_token = base64.b64encode(b"admin:testpassword").decode("utf-8")
         req = urllib.request.Request(url, headers={"Authorization": f"Basic {valid_token}"})
@@ -85,3 +85,4 @@ class TestWebAuth(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+

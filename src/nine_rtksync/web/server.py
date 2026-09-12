@@ -1,4 +1,4 @@
-"""Servidor HTTP multi-thread e dashboard web embutido do 9RTKSync."""
+"""Multi-threaded HTTP server and embedded web dashboard for 9RTKSync."""
 
 import base64
 import json
@@ -48,7 +48,7 @@ class QuietThreadingHTTPServer(ThreadingHTTPServer):
 
 
 class DashboardHandler(BaseHTTPRequestHandler):
-    """Handler HTTP para servir o dashboard, API REST e agendador cron com Basic Auth."""
+    """HTTP handler serving dashboard UI, REST API, and cron scheduler with Basic Auth."""
 
     settings: Optional[Settings] = None
     sync_trigger_callback: Optional[Callable[[], Dict[str, Any]]] = None
@@ -87,7 +87,7 @@ class DashboardHandler(BaseHTTPRequestHandler):
         self.send_header("WWW-Authenticate", 'Basic realm="9RTKSync Dashboard"')
         self.send_header("Content-Type", "text/plain; charset=utf-8")
         self.end_headers()
-        self.write_body(b"Autenticacao requerida. Credenciais padrao: admin / pathbit")
+        self.write_body(b"Authentication required. Default credentials: admin / pathbit")
         return False
 
     def do_GET(self):
@@ -106,7 +106,7 @@ class DashboardHandler(BaseHTTPRequestHandler):
         elif route.path == "/api/cron-status":
             self.serve_cron_status()
         else:
-            self.send_error(HTTPStatus.NOT_FOUND, "Pagina nao encontrada")
+            self.send_error(HTTPStatus.NOT_FOUND, "Page not found")
 
     def do_POST(self):
         if not self.require_auth():
@@ -132,7 +132,7 @@ class DashboardHandler(BaseHTTPRequestHandler):
         elif route == "/api/cron-run":
             self.handle_cron_run()
         else:
-            self.send_error(HTTPStatus.NOT_FOUND, "Endpoint nao encontrado")
+            self.send_error(HTTPStatus.NOT_FOUND, "Endpoint not found")
 
     def redirect_to_dashboard(self, tone: str, message: str) -> None:
         """Redireciona para a pagina com uma mensagem de resultado."""
@@ -463,7 +463,7 @@ class DashboardHandler(BaseHTTPRequestHandler):
             "dbPath": self.db_path,
             "connectionsCount": conns_count,
             "combosCount": combos_count,
-            "message": "Gateway 9Router e banco SQLite 100% operacionais!" if (gateway_ok and db_exists) else "Falha ao conectar ao 9Router ou banco indisponivel",
+            "message": "9Router gateway and SQLite database are 100% operational!" if (gateway_ok and db_exists) else "Failed to connect to 9Router or database unavailable",
         }
 
         body = json.dumps(result, ensure_ascii=False, indent=2).encode("utf-8")
@@ -481,7 +481,7 @@ class DashboardHandler(BaseHTTPRequestHandler):
             new_pass = str(data.get("newPassword") or "").strip()
 
             if not new_pass or len(new_pass) < 4:
-                body = json.dumps({"success": False, "error": "A senha deve conter ao menos 4 caracteres."}).encode("utf-8")
+                body = json.dumps({"success": False, "error": "Password must contain at least 4 characters."}).encode("utf-8")
                 self.send_response(HTTPStatus.BAD_REQUEST)
                 self.send_header("Content-Type", "application/json")
                 self.send_header("Content-Length", str(len(body)))
@@ -494,7 +494,7 @@ class DashboardHandler(BaseHTTPRequestHandler):
                 if ok:
                     body = json.dumps({
                         "success": True,
-                        "message": "Credenciais atualizadas com sucesso! Utilize o novo usuario e senha nas proximas requisicoes.",
+                        "message": "Credentials updated successfully! Use your new username and password for future requests.",
                         "newUser": new_user,
                     }).encode("utf-8")
                     self.send_response(HTTPStatus.OK)
@@ -504,7 +504,7 @@ class DashboardHandler(BaseHTTPRequestHandler):
                     self.write_body(body)
                     return
 
-            self.send_error(HTTPStatus.INTERNAL_SERVER_ERROR, "Nao foi possivel salvar credenciais")
+            self.send_error(HTTPStatus.INTERNAL_SERVER_ERROR, "Could not save credentials")
         except Exception as e:
             body = json.dumps({"success": False, "error": str(e)}).encode("utf-8")
             self.send_response(HTTPStatus.INTERNAL_SERVER_ERROR)
@@ -532,7 +532,7 @@ class DashboardHandler(BaseHTTPRequestHandler):
                 self.end_headers()
                 self.write_body(err)
                 return
-        self.send_error(HTTPStatus.SERVICE_UNAVAILABLE, "Sincronizador nao disponivel")
+        self.send_error(HTTPStatus.SERVICE_UNAVAILABLE, "Synchronizer unavailable")
 
     def handle_cron_run(self):
         if DashboardHandler.cron_scheduler:
@@ -565,7 +565,7 @@ def start_web_server(
     settings: Optional[Settings] = None,
     cron_scheduler: Optional[Any] = None,
 ) -> ThreadingHTTPServer:
-    """Inicia o servidor HTTP em background thread com Basic Auth e Cron Scheduler."""
+    """Start HTTP server on background thread with Basic Auth and Cron Scheduler."""
     DashboardHandler.db_path = db_path
     DashboardHandler.router_url = router_url
     DashboardHandler.sync_trigger_callback = sync_callback
@@ -576,3 +576,4 @@ def start_web_server(
     thread = threading.Thread(target=server.serve_forever, daemon=True)
     thread.start()
     return server
+
