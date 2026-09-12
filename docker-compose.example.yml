@@ -1,9 +1,12 @@
 name: 9rtksync-stack
 
 services:
-  9router:
+  9rtk-router:
     image: decolua/9router:latest
     container_name: 9rtk-router
+    hostname: 9rtk-router
+    networks:
+      - 9rtksync-net
     restart: unless-stopped
     ports:
       # Porta interna 20128 (padrao do 9Router); publicada em 8081 no host.
@@ -14,7 +17,7 @@ services:
       - DATA_DIR=/app/data
       - PORT=20128
       - HOSTNAME=0.0.0.0
-      - NEXT_PUBLIC_BASE_URL=http://localhost:20128
+      - NEXT_PUBLIC_BASE_URL=http://localhost:8081
       - NODE_ENV=production
       # Sem valor de fallback: um default publicado em arquivo de exemplo vira
       # a senha real de toda implantacao que so copiou e colou. O compose
@@ -28,7 +31,7 @@ services:
     volumes:
       - 9router_data:/app/data
 
-  9rtksync:
+  9rtk-sync:
     # Mesmo uid do gateway. Os dois compartilham o volume, e este servico
     # cria db/ e logs/ no startup: rodando como root, esses diretorios
     # nasciam com dono root e o 9router -- que roda como `node` (1000) --
@@ -37,6 +40,9 @@ services:
     user: "1000:1000"
     image: ghcr.io/pathbit/9rtksync:latest
     container_name: 9rtk-sync
+    hostname: 9rtk-sync
+    networks:
+      - 9rtksync-net
     restart: unless-stopped
     ports:
       # Porta interna 9090 (igual no OminiRTKSync); publicada em 9091 no host.
@@ -45,11 +51,11 @@ services:
     volumes:
       - 9router_data:/app/data
       - ${HOME}:/root/host:ro
-      - 9rtksync_logs:/app/data/logs
+      - 9rtksync_logs:/app/logs
     environment:
       - HOST_HOME=/root/host
       - DB_PATH=/app/data/db/data.sqlite
-      - ROUTER_URL=${ROUTER_URL:-http://9router:20128}
+      - ROUTER_URL=${ROUTER_URL:-http://9rtk-router:20128}
       - SYNC_INTERVAL=${SYNC_INTERVAL:-300}
       - REFRESH_MARGIN=${REFRESH_MARGIN:-900}
       - CRON_ENABLED=${CRON_ENABLED:-1}
@@ -67,11 +73,11 @@ services:
       # repassa-las ao container.
       - CREDENTIAL_CHECK_ENABLED=${CREDENTIAL_CHECK_ENABLED:-1}
       - CREDENTIAL_CHECK_TIMEOUT=${CREDENTIAL_CHECK_TIMEOUT:-8}
-      - LOG_DIR=${LOG_DIR:-/app/data/logs}
+      - LOG_DIR=${LOG_DIR:-/app/logs}
       - LOG_RETENTION_DAYS=${LOG_RETENTION_DAYS:-30}
       - LOG_LEVEL=${LOG_LEVEL:-INFO}
     depends_on:
-      - 9router
+      - 9rtk-router
     healthcheck:
       test: ["CMD", "/opt/venv/bin/python3", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:9090/healthz', timeout=3)"]
       interval: 15s
@@ -82,3 +88,10 @@ services:
 volumes:
   9router_data:
   9rtksync_logs:
+
+networks:
+  9rtksync-net:
+    name: 9rtksync-net
+    # Rede propria da stack. Na rede default, duas stacks no mesmo
+    # daemon resolvem o mesmo nome curto e nao da para saber a qual
+    # gateway o sincronizador se conectou.
