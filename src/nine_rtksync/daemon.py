@@ -36,7 +36,11 @@ class SyncEngine:
         self.providers: List[BaseProvider] = [
             GoogleProvider(credential_paths=settings.credential_paths, discovery=self.discovery),
             GenericOAuthProvider(discovery=self.discovery),
-            ApiKeyProvider(discovery=self.discovery),
+            ApiKeyProvider(
+                discovery=self.discovery,
+                validate_credentials=settings.validate_credentials,
+                validation_timeout=settings.validation_timeout,
+            ),
             LocalProvider(),
         ]
 

@@ -31,7 +31,7 @@ request; a push to `master` republishes the wiki automatically.
 * **Rate-Limit Lock Clearing**
   * Automatically purges expired `rateLimitedUntil` locks and resets backoff counters as soon as cooldown periods finish.
 * **Built-in Web Dashboard**
-  * Lightweight web server on port `9190` featuring a modern interface, live account countdowns, real-time gateway health diagnostics, and manual sync triggers.
+  * Lightweight web server on port `9090` (published on `9091`) featuring a modern interface, live account countdowns, real-time gateway health diagnostics, and manual sync triggers.
 * **Resilience Combos Enforcement**
   * Keeps fallback combos registered and synchronized in SQLite (`arsenal-supremo`, `arsenal-rapido`, `arsenal-offline`, `claudegravity-fallback`, `claudegravity-thinking`) without primary key conflicts.
 * **Strict Virtual Environment Execution**
@@ -49,7 +49,7 @@ docker pull ghcr.io/pathbit/9rtksync:latest
 
 ### Docker Compose Example
 
-Add `router-sync` to your `docker-compose.yml` alongside [9Router](https://github.com/decolua/9router):
+Add `9rtksync` to your `docker-compose.yml` alongside [9Router](https://github.com/decolua/9router):
 
 ```yaml
 services:
@@ -70,10 +70,10 @@ services:
 
   9rtksync:
     image: ghcr.io/pathbit/9rtksync:latest
-    container_name: router-sync
+    container_name: 9rtksync
     restart: unless-stopped
     ports:
-      - "127.0.0.1:9190:9190"
+      - "127.0.0.1:9091:9090"
     volumes:
       - 9router_data:/app/data
       - ${HOME}:/root/host:ro
@@ -84,14 +84,14 @@ services:
       - SYNC_INTERVAL=${SYNC_INTERVAL:-300}
       - REFRESH_MARGIN=${REFRESH_MARGIN:-900}
       - ENABLE_WEB_DASHBOARD=${ENABLE_WEB_DASHBOARD:-1}
-      - WEB_PORT=${WEB_PORT:-9190}
+      - WEB_PORT=${WEB_PORT:-9090}
       - DASHBOARD_USER=${DASHBOARD_USER:-admin}
       - DASHBOARD_PASSWORD=${DASHBOARD_PASSWORD:-pathbit}
     depends_on:
       9router:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "/opt/venv/bin/python3", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:9190/healthz', timeout=3)"]
+      test: ["CMD", "/opt/venv/bin/python3", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:9090/healthz', timeout=3)"]
       interval: 15s
       timeout: 5s
       retries: 3
@@ -140,7 +140,7 @@ cp .env.example .env
 # Run an immediate one-shot synchronization pass
 9RTKSync --once --db-path /path/to/data.sqlite
 
-# Run continuous background daemon with web dashboard on port 9190
+# Run continuous background daemon with web dashboard on port 9090 (published on 9091)
 9RTKSync --daemon --db-path /path/to/data.sqlite
 ```
 
@@ -155,7 +155,7 @@ cp .env.example .env
 | `SYNC_INTERVAL` | `300` | Sync and background cron loop interval in seconds |
 | `REFRESH_MARGIN` | `900` | Proactive token renewal margin in seconds before expiration |
 | `ENABLE_WEB_DASHBOARD` | `1` | Enable the embedded web dashboard (`1` to enable, `0` to disable) |
-| `WEB_PORT` | `9190` | HTTP port for the web dashboard |
+| `WEB_PORT` | `9090` | HTTP port for the web dashboard |
 | `WEB_HOST` | `0.0.0.0` | Network binding interface for the dashboard web server |
 | `DASHBOARD_USER` | `admin` | HTTP Basic Auth username for web dashboard access |
 | `DASHBOARD_PASSWORD` | `pathbit` | Default HTTP Basic Auth password for web dashboard access |
@@ -167,7 +167,7 @@ cp .env.example .env
 
 When running with `ENABLE_WEB_DASHBOARD=1`, access the dashboard in your browser:
 
-👉 **http://localhost:9190**
+👉 **http://localhost:9091**
 
 Dashboard capabilities:
 * Live operational metrics (Total Connections, OAuth Accounts, API Keys, Resilience Combos).

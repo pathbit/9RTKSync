@@ -46,25 +46,40 @@ class ConnectionRecord:
     def api_key(self) -> Optional[str]:
         return self.data.get("apiKey")
 
-    # Provider names that identify a local / OpenAI-compatible instance.
+    # Provider names that suggest a local / OpenAI-compatible instance. A marker
+    # alone is not proof: "ollama" is also the name of Ollama Cloud, which is a
+    # hosted service and must never be probed on /api/tags.
     LOCAL_PROVIDER_MARKERS = ("ollama", "vllm", "lmstudio", "llamacpp", "localai", "openai-compatible")
+    LOCAL_HOSTS = ("localhost", "127.0.0.1", "0.0.0.0", "::1", "host.docker.internal", ".local")
 
     @property
     def is_local(self) -> bool:
-        """Whether the connection points at a local instance (Ollama, vLLM, LM Studio...).
+        """Whether the connection really points at an instance on this machine.
 
-        A local instance usually needs a facade API key, so checking has_api_key
-        alone would classify it as a cloud provider.
+        Classification is driven by the address, not by the provider name. Only
+        when no address is declared does a marker like "openai-compatible" --
+        which has no hosted counterpart -- stand on its own.
         """
-        provider = self.provider.lower()
-        if any(marker in provider for marker in self.LOCAL_PROVIDER_MARKERS):
-            return True
-        base_url = str(self.data.get("baseUrl") or "")
-        return any(host in base_url for host in ("localhost", "127.0.0.1", "0.0.0.0", "host.docker.internal"))
+        base_url = str(self.base_url or "").lower()
+        if base_url:
+            return any(host in base_url for host in self.LOCAL_HOSTS)
+
+        # No address: "openai-compatible" only exists as a self-hosted endpoint,
+        # whereas "ollama" without a baseUrl is the cloud account.
+        return "openai-compatible" in self.provider.lower()
 
     @property
     def base_url(self) -> Optional[str]:
-        """Provider base URL, when declared."""
+        """Provider base URL, when declared.
+
+        9Router keeps it inside providerSpecificData, not at the root of data --
+        reading only the root is why local instances used to show no models.
+        """
+        specific = self.data.get("providerSpecificData")
+        if isinstance(specific, dict):
+            nested = specific.get("baseUrl") or specific.get("baseURL")
+            if nested:
+                return nested
         return self.data.get("baseUrl") or self.data.get("baseURL") or None
 
     @property
@@ -102,8 +117,31 @@ class ConnectionRecord:
         return rem is not None and rem <= 0
 
     @property
+    def credential_state(self) -> Optional[str]:
+        """Result of the last live credential probe, when one was recorded.
+
+        Written by credential_check.py, never by the gateway.
+        """
+        state = self.data.get("credentialState")
+        return str(state) if state else None
+
+    @property
     def health_status(self) -> str:
-        """Semantic classification of connection health."""
+        """Semantic classification of connection health.
+
+        A live probe outranks everything else: a key the provider rejects is
+        broken no matter what the gateway last stamped. Local instances are
+        classified before the API-key branch because they carry a facade key
+        and would otherwise never reach their own test.
+        """
+        probed = self.credential_state
+        if probed in ("invalid", "rate_limited", "unreachable"):
+            return probed
+
+        if self.is_local:
+            # A local instance is only healthy when its model catalog answered.
+            return "unknown" if self.data.get("testStatus") == "unreachable" else "active"
+
         if self.is_oauth:
             rem = self.remaining_seconds
             if rem is None:
@@ -113,12 +151,12 @@ class ConnectionRecord:
             if rem < 900:
                 return "expiring_soon"
             return "active"
+
         if self.has_api_key:
             if self.data.get("rateLimitedUntil"):
                 return "rate_limited"
-            return "active"
-        if self.is_local:
-            # A local instance is only healthy when its model catalog answered.
-            return "unknown" if self.data.get("testStatus") == "unreachable" else "active"
+            # Never probed yet: say so instead of claiming health nobody verified.
+            return "active" if probed == "valid" else "not_checked"
+
         # 9Router writes "ok", OmniRoute writes "active"; both mean healthy.
         return "active" if self.data.get("testStatus") in ("ok", "active") else "unknown"

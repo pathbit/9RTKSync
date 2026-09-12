@@ -6,23 +6,36 @@ import urllib.request
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional, Tuple
 
+from ..credential_check import (
+    DEFAULT_TIMEOUT_SECONDS,
+    STATE_INVALID,
+    STATE_RATE_LIMITED,
+    STATE_UNREACHABLE,
+    STATE_VALID,
+    check_api_key,
+)
 from ..models import ConnectionRecord
 from .base import BaseProvider
 
 
 class ApiKeyProvider(BaseProvider):
-    """Health monitor for static API key providers."""
+    """Health monitor for static API key providers.
 
-    HEALTH_CHECK_ENDPOINTS = {
-        "groq": "https://api.groq.com/openai/v1/models",
-        "mistral": "https://api.mistral.ai/v1/models",
-        "openrouter": "https://openrouter.ai/api/v1/models",
-        "gemini": "https://generativelanguage.googleapis.com/v1beta/models",
-        "openai": "https://api.openai.com/v1/models",
-    }
+    Validation is off by default in constructors that do not ask for it, so a
+    test or a dry run never reaches out to the internet by accident.
+    """
 
-    def __init__(self, discovery: Optional[Any] = None):
+    def __init__(
+        self,
+        discovery: Optional[Any] = None,
+        validate_credentials: bool = False,
+        validation_timeout: float = DEFAULT_TIMEOUT_SECONDS,
+        opener: Optional[Any] = None,
+    ):
         self.discovery = discovery
+        self.validate_credentials = validate_credentials
+        self.validation_timeout = validation_timeout
+        self.opener = opener
 
     def can_handle(self, conn: ConnectionRecord) -> bool:
         return conn.has_api_key
@@ -50,15 +63,39 @@ class ApiKeyProvider(BaseProvider):
             modified = True
             messages.append("Proactively removed rateLimitedUntil lock")
 
-        # 3. Update health status stamp if necessary
-        if not data.get("testStatus") or data.get("testStatus") != "ok":
-            data["testStatus"] = "ok"
-            data["lastTested"] = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+        # 3. Ask the provider whether the key still works.
+        #
+        # This used to stamp testStatus = "ok" unconditionally, which is why the
+        # panel showed every API key as healthy: nothing had ever been verified,
+        # and a revoked key stayed green until a real request failed.
+        if self.validate_credentials:
+            result = check_api_key(
+                conn.provider,
+                conn.api_key or "",
+                base_url=conn.base_url,
+                timeout=self.validation_timeout,
+                opener=self.opener,
+            )
+            data.update(result.to_dict())
+            data["lastTested"] = result.checked_at
             modified = True
-            messages.append("Connection status marked as operational (ok)")
+
+            if result.state == STATE_VALID:
+                data["testStatus"] = "ok"
+                messages.append(f"API key accepted by the provider ({result.detail})")
+            elif result.state == STATE_INVALID:
+                # Do not claim health the provider just denied.
+                data["testStatus"] = "invalid"
+                messages.append(f"API key REJECTED by the provider ({result.detail})")
+            elif result.state == STATE_RATE_LIMITED:
+                messages.append(f"Provider rate limited the validation ({result.detail})")
+            elif result.state == STATE_UNREACHABLE:
+                messages.append(f"Provider unreachable, key not verified: {result.detail}")
+            else:
+                messages.append(result.detail or "Credential not verifiable")
 
         if not messages:
-            messages.append("API key active and healthy")
+            messages.append("API key unchanged")
 
         return modified, data if modified else None, messages
 

@@ -108,8 +108,33 @@ class DashboardHandler(BaseHTTPRequestHandler):
         else:
             self.send_error(HTTPStatus.NOT_FOUND, "Page not found")
 
+    def is_same_origin_request(self) -> bool:
+        """Rejeita POST disparado por outro site.
+
+        O Basic Auth e anexado automaticamente pelo navegador mesmo em um POST
+        vindo de outra origem, e um formulario urlencoded nao dispara preflight.
+        Sem esta checagem, uma pagina maliciosa aberta na mesma maquina poderia
+        trocar a senha do painel. Nao se usa Referer porque a propria pagina e
+        servida com Referrer-Policy: no-referrer.
+        """
+        fetch_site = self.headers.get("Sec-Fetch-Site", "")
+        if fetch_site:
+            # "none" e a navegacao digitada na barra de enderecos.
+            return fetch_site in ("same-origin", "none")
+
+        origin = self.headers.get("Origin", "")
+        if origin:
+            return urlparse(origin).netloc == self.headers.get("Host", "")
+
+        # Cliente que nao e navegador (curl, script): nao ha sessao a sequestrar.
+        return True
+
     def do_POST(self):
         if not self.require_auth():
+            return
+
+        if not self.is_same_origin_request():
+            self.send_error(HTTPStatus.FORBIDDEN, "Cross-origin request rejected")
             return
 
         length = int(self.headers.get("Content-Length", 0))
