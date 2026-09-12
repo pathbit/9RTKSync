@@ -176,7 +176,7 @@ def render_notice_page(title: str, body: str, link_label: str = "") -> bytes:
   <title>{esc(title)}</title>
   <link rel="stylesheet" href="{BOOTSTRAP_CSS}">
   <link rel="stylesheet" href="{BOOTSTRAP_ICONS}">
-  <style>body {{ background: #0b0d12; }}</style>
+  <style>body {{ background: #091413; }}</style>
 </head>
 <body class="d-flex align-items-center justify-content-center" style="min-height:100vh">
   <div class="card text-center" style="max-width:34rem">
@@ -648,27 +648,51 @@ def render_dashboard(
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="{GOOGLE_FONTS}">
   <style>
-    :root {{ --surface: #12151c; --surface-2: #171b24; --line: #242a36; }}
-    body {{ background: #0b0d12; }}
+    /* ------------------------------------------------------------------
+       Identidade visual: os tres paineis da familia RTKSync tem a MESMA
+       estrutura e a MESMA folha de estilo. O que muda e o valor destes
+       tokens -- verde-petroleo, quase preto.
+       Trocar o produto e trocar estas oito linhas, nada mais.
+       ------------------------------------------------------------------ */
+    :root {{
+      --bg:        #091413;   /* fundo da pagina */
+      --surface:   #102422;   /* cartao */
+      --surface-2: #16302d;   /* cabecalho de cartao, chip */
+      --line:      #1e413d;   /* borda */
+      --accent:    #2fb8a4;   /* acao primaria */
+      --accent-2:  #57d6c4;   /* acao secundaria, realce */
+      --brand-a:   #12806f;   /* marca, inicio do gradiente */
+      --brand-b:   #2fb8a4;   /* marca, fim do gradiente */
+      --text:      #e6e8ee;
+      --text-dim:  #97a0b5;
+    }}
+    body {{ background: var(--bg); color: var(--text); }}
     .card {{ background: var(--surface); border: 1px solid var(--line); }}
     .card-header {{ background: var(--surface-2); border-bottom: 1px solid var(--line); font-weight: 600; }}
-    .metric .metric-label {{ font-size: .78rem; text-transform: uppercase; letter-spacing: .06em; color: #8b93a7; }}
+    .metric .metric-label {{ font-size: .78rem; text-transform: uppercase; letter-spacing: .06em; color: var(--text-dim); }}
     .metric .metric-value {{ font-size: 2rem; font-weight: 700; line-height: 1.2; margin-top: .35rem; }}
     .provider-chip {{ background: var(--surface-2); border: 1px solid var(--line); border-radius: .35rem;
                       padding: .15rem .5rem; font-family: var(--bs-font-monospace); font-size: .78rem;
                       text-transform: uppercase; }}
-    .table-dark {{ --bs-table-bg: transparent; }}
+    .table-dark {{ --bs-table-bg: transparent; --bs-table-border-color: var(--line); }}
     .brand-mark {{ width: 2.25rem; height: 2.25rem; display: grid; place-items: center; border-radius: .5rem;
-                   background: linear-gradient(135deg, #2563eb, #7c3aed); color: #fff; font-size: 1.1rem; }}
-    .accordion-item, .accordion-button {{ background: var(--surface); color: #dee2e6; }}
+                   background: linear-gradient(135deg, var(--brand-a), var(--brand-b)); color: #fff; font-size: 1.1rem; }}
+    .accordion-item, .accordion-button {{ background: var(--surface); color: var(--text); }}
     .accordion-button:not(.collapsed) {{ background: var(--surface-2); color: #fff; box-shadow: none; }}
-    .cron-log {{ white-space: pre-wrap; word-break: break-word; font-size: .8rem; color: #b9c0cf;
-                 background: #0b0d12; border: 1px solid var(--line); border-radius: .35rem; padding: .6rem; }}
-    /* Barra de acoes do cabecalho: todos os controles com a MESMA altura.
-       O seletor de idioma carrega so a bandeira, um elemento com altura
-       propria; sem texto ao lado para definir a linha, ele esticava o botao e
-       ficava mais alto que os vizinhos. Fixar a altura em todos resolve na
-       origem, em vez de compensar caso a caso. */
+    .cron-log {{ white-space: pre-wrap; word-break: break-word; font-size: .8rem; color: var(--text-dim);
+                 background: var(--bg); border: 1px solid var(--line); border-radius: .35rem; padding: .6rem; }}
+    /* O botao primario segue o acento do produto, em vez do azul fixo do
+       Bootstrap: senao os tres mudam de fundo e ficam com o mesmo botao, o que
+       faz a identidade parecer acidental. */
+    .btn-primary {{ --bs-btn-bg: var(--accent); --bs-btn-border-color: var(--accent);
+                    --bs-btn-hover-bg: var(--accent-2); --bs-btn-hover-border-color: var(--accent-2);
+                    --bs-btn-active-bg: var(--accent-2); --bs-btn-active-border-color: var(--accent-2);
+                    --bs-btn-color: #0b0d12; --bs-btn-hover-color: #0b0d12; --bs-btn-active-color: #0b0d12; }}
+    a {{ color: var(--accent-2); }}
+    a:hover {{ color: var(--accent); }}
+    /* Barra de acoes do cabecalho: todos os controles com a MESMA altura. O
+       seletor de idioma carrega so a bandeira, um elemento com altura propria;
+       sem texto ao lado para definir a linha, ele esticava o botao. */
     .barra-acoes {{ display: flex; align-items: stretch; gap: .5rem; }}
     .barra-acoes > * {{ display: flex; align-items: center; }}
     .barra-acoes .btn {{ height: 2rem; padding-top: 0; padding-bottom: 0;
