@@ -5,7 +5,6 @@ import os
 import stat
 import tempfile
 import logging
-import unittest
 import unittest.mock
 
 from nine_rtksync import cli as nine_rtksync_cli
