@@ -1,4 +1,4 @@
-# 9RTKSync · 9Router Token & Connection Sync
+# 9RTKSync · 9Router Universal Token & Connection Synchronizer
 
 [![CI](https://github.com/pathbit/9RTKSync/actions/workflows/ci.yml/badge.svg)](https://github.com/pathbit/9RTKSync/actions/workflows/ci.yml)
 [![Release and Docker Package](https://github.com/pathbit/9RTKSync/actions/workflows/release.yml/badge.svg)](https://github.com/pathbit/9RTKSync/actions/workflows/release.yml)
@@ -6,7 +6,7 @@
 [![Python Version](https://img.shields.io/badge/python-3.14.7-blue.svg)](https://www.python.org/ftp/python/3.14.7/python-3.14.7-macos11.pkg)
 [![Docker Package](https://img.shields.io/badge/docker-ghcr.io%2Fpathbit%2F9rtksync-blue)](https://github.com/pathbit/9RTKSync/pkgs/container/9rtksync)
 
-O **`9RTKSync`** (*9Router Token & Connection Synchronizer*) é um guardião de alta disponibilidade e auto-cura para gateways [9Router](https://github.com/decolua/9router). Ele elimina desconexões súbitas, expiração prematura de tokens OAuth, corrupção de formatos de data e bloqueios residuais de *rate limit*, mantendo qualquer conta conectada ativa e saudável.
+O **`9RTKSync`** (*9Router Universal Token & Connection Synchronizer*) é um guardião de alta disponibilidade e auto-cura para gateways [9Router](https://github.com/decolua/9router). Ele elimina desconexões súbitas, expiração prematura de tokens OAuth, corrupção de formatos de data e bloqueios residuais de *rate limit*, mantendo qualquer conta conectada ativa e saudável.
 
 ---
 
