@@ -19,7 +19,7 @@ from ..i18n import DEFAULT_LANGUAGE, normalize_language, translate
 from ..prefs import get_preference, resolve_prefs_path, set_preference
 from ..database import get_all_combos, get_all_connections
 from ..models import ConnectionRecord
-from .render import render_dashboard
+from .render import render_dashboard, render_notice_page
 
 # Tempo de vida do resultado da sondagem ao gateway. O /healthz é chamado a cada
 # 15s pelo Docker; sem cache, cada chamada faria uma requisição HTTP de saída de
@@ -85,16 +85,29 @@ class DashboardHandler(BaseHTTPRequestHandler):
         if self.check_auth():
             return True
 
+        lang = self.resolve_language()
+        payload = render_notice_page(
+            translate("auth.required", lang), translate("auth.required_body", lang)
+        )
         self.send_response(HTTPStatus.UNAUTHORIZED)
         self.send_header("WWW-Authenticate", 'Basic realm="9RTKSync Dashboard"')
-        self.send_header("Content-Type", "text/plain; charset=utf-8")
+        self.send_header("Content-Type", "text/html; charset=utf-8")
+        self.send_header("Content-Length", str(len(payload)))
+        self.send_header("Cache-Control", "no-store")
         self.end_headers()
-        self.write_body(b"Authentication required.")
+        self.write_body(payload)
         return False
 
     def do_GET(self):
         if self.path == "/healthz":
             self.serve_healthz()
+            return
+
+        # Servida antes de require_auth de proposito: o navegador ainda esta
+        # com a senha antiga neste instante, e exigir autenticacao aqui daria
+        # um 401 cru exatamente depois de a troca ter dado certo.
+        if urlparse(self.path).path == "/credenciais-atualizadas":
+            self.serve_credentials_updated()
             return
 
         if not self.require_auth():
@@ -280,7 +293,10 @@ class DashboardHandler(BaseHTTPRequestHandler):
                 )
                 return
             if self.settings and self.settings.update_auth_credentials(new_user, new_pass):
-                self.redirect_to_dashboard("success", "Credenciais atualizadas. Autentique-se novamente.")
+                self.send_response(HTTPStatus.SEE_OTHER)
+                self.send_header("Location", "/credenciais-atualizadas")
+                self.send_header("Content-Length", "0")
+                self.end_headers()
                 return
             self.redirect_to_dashboard("danger", "Nao foi possivel salvar as credenciais.")
             return
@@ -320,6 +336,21 @@ class DashboardHandler(BaseHTTPRequestHandler):
             self.wfile.write(payload)
         except CLIENT_DISCONNECT_ERRORS:
             self.close_connection = True
+
+    def serve_credentials_updated(self):
+        """Confirma a troca de senha sem exigir a credencial que acabou de mudar."""
+        lang = self.resolve_language()
+        payload = render_notice_page(
+            translate("auth.updated_title", lang),
+            translate("auth.updated_body", lang),
+            translate("auth.updated_link", lang),
+        )
+        self.send_response(HTTPStatus.OK)
+        self.send_header("Content-Type", "text/html; charset=utf-8")
+        self.send_header("Content-Length", str(len(payload)))
+        self.send_header("Cache-Control", "no-store")
+        self.end_headers()
+        self.write_body(payload)
 
     def serve_healthz(self):
         """Health check do Docker: barato, sem cache do navegador e sem excecao no log.
@@ -451,7 +482,7 @@ class DashboardHandler(BaseHTTPRequestHandler):
 
         cron_info = self.cron_scheduler.get_status() if self.cron_scheduler else {"active": False}
         is_default = self.settings.is_default_password() if self.settings else False
-        cur_user, _ = self.settings.get_auth_credentials() if self.settings else ("admin", "pathbit")
+        cur_user, _ = self.settings.get_auth_credentials() if self.settings else ("admin", "")
 
         payload = {
             "status": "online",

@@ -86,7 +86,7 @@ services:
       - ENABLE_WEB_DASHBOARD=${ENABLE_WEB_DASHBOARD:-1}
       - WEB_PORT=${WEB_PORT:-9090}
       - DASHBOARD_USER=${DASHBOARD_USER:-admin}
-      - DASHBOARD_PASSWORD=${DASHBOARD_PASSWORD:-pathbit}
+      - DASHBOARD_PASSWORD=${DASHBOARD_PASSWORD:-}
     depends_on:
       9router:
         condition: service_healthy
@@ -158,7 +158,7 @@ cp .env.example .env
 | `WEB_PORT` | `9090` | HTTP port for the web dashboard |
 | `WEB_HOST` | `0.0.0.0` | Network binding interface for the dashboard web server |
 | `DASHBOARD_USER` | `admin` | HTTP Basic Auth username for web dashboard access |
-| `DASHBOARD_PASSWORD` | `pathbit` | Default HTTP Basic Auth password for web dashboard access |
+| `DASHBOARD_PASSWORD` | *(vazio)* | Panel password. Left empty, the first sign-in uses the recovery credential generated on first boot. |
 | `ANTIGRAVITY_TOKEN_PATH` | auto | Custom path for Antigravity OAuth token file |
 
 ---
