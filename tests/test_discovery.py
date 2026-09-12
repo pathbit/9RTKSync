@@ -5,6 +5,7 @@ import os
 import shutil
 import tempfile
 import unittest
+from unittest import mock
 
 from nine_rtksync.discovery import HostDiscoveryEngine
 from nine_rtksync.models import ConnectionRecord
@@ -112,7 +113,9 @@ class TestDiscoveryEngine(unittest.TestCase):
         self.assertTrue(mod)
         self.assertEqual(data["apiKey"], "sk-ant-new-host")
 
-        # 3. Local Provider handles Ollama
+        # 3. Local Provider handles Ollama.
+        # The catalog probe is stubbed so the test never depends on something
+        # actually listening on 11434 — it passed locally and failed in CI before.
         lp = LocalProvider()
         conn_ollama = ConnectionRecord(
             id="c3",
@@ -123,9 +126,22 @@ class TestDiscoveryEngine(unittest.TestCase):
             data_raw=json.dumps({"baseUrl": "http://127.0.0.1:11434/v1"}),
         )
         self.assertTrue(lp.can_handle(conn_ollama))
-        mod, data, msgs = lp.check_and_refresh(conn_ollama)
+
+        with mock.patch.object(
+            LocalProvider, "discover_models", return_value=(["llama3.2:3b", "qwen2.5:7b"], "")
+        ):
+            mod, data, msgs = lp.check_and_refresh(conn_ollama)
         self.assertTrue(mod)
         self.assertEqual(data["testStatus"], "ok")
+        self.assertEqual(data["discoveredModels"], ["llama3.2:3b", "qwen2.5:7b"])
+
+        # An instance that stops answering must not be reported as healthy.
+        with mock.patch.object(
+            LocalProvider, "discover_models", return_value=([], "Connection refused")
+        ):
+            mod, data, msgs = lp.check_and_refresh(conn_ollama)
+        self.assertTrue(mod)
+        self.assertEqual(data["testStatus"], "unreachable")
 
 
 if __name__ == "__main__":

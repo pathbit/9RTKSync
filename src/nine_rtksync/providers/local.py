@@ -38,7 +38,15 @@ class LocalProvider(BaseProvider):
                     req.add_header("Authorization", f"Bearer {api_key}")
                 with urllib.request.urlopen(req, timeout=PROBE_TIMEOUT_SECONDS) as resp:
                     payload = json.loads(resp.read().decode("utf-8"))
-            except (urllib.error.URLError, urllib.error.HTTPError, OSError, ValueError) as e:
+            except urllib.error.HTTPError as e:
+                # The host answered, this path just is not the right one — keep trying.
+                last_error = str(e)
+                continue
+            except (urllib.error.URLError, OSError) as e:
+                # Nothing is listening: trying the remaining paths only multiplies the
+                # timeout (3 endpoints x 3s) on every sweep. Give up now.
+                return [], str(e)
+            except ValueError as e:
                 last_error = str(e)
                 continue
 
