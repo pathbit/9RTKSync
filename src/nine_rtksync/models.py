@@ -117,6 +117,21 @@ class ConnectionRecord:
         return rem is not None and rem <= 0
 
     @property
+    def last_refresh_at(self) -> Optional[str]:
+        """Quando a credencial foi renovada/verificada pela ultima vez.
+
+        lastRefreshAt e gravado na renovacao de OAuth; lastTested, na validacao
+        da credencial. Sem expor isto, o painel diz "0 renovadas" e nao ha como
+        saber se a ultima renovacao foi ha um minuto ou ha uma semana.
+        """
+        return (
+            self.data.get("lastRefreshAt")
+            or self.data.get("credentialCheckedAt")
+            or self.data.get("lastTested")
+            or None
+        )
+
+    @property
     def credential_state(self) -> Optional[str]:
         """Result of the last live credential probe, when one was recorded.
 

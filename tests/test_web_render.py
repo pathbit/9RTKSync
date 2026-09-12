@@ -11,6 +11,7 @@ import unittest
 import urllib.error
 import urllib.request
 
+from nine_rtksync import i18n
 from nine_rtksync.config import Settings
 from nine_rtksync.models import ConnectionRecord
 from nine_rtksync.web import render, server as web_server
@@ -323,3 +324,34 @@ class TestDashboardOverHttp(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestRemainingValidity(unittest.TestCase):
+    """Um token OAuth nunca e ilimitado: sem validade legivel, o dado esta faltando."""
+
+    def build(self, payload):
+        return ConnectionRecord(
+            id="c1", provider="antigravity", name="Antigravity",
+            created_at="", updated_at="", data_raw=json.dumps(payload),
+        )
+
+    def test_oauth_without_expiry_is_flagged_not_called_unlimited(self):
+        page = render.render_remaining(self.build({"accessToken": "a", "refreshToken": "r"}), "en")
+        self.assertIn("Expiry unknown", page)
+        self.assertNotIn("Unlimited", page)
+
+    def test_static_key_may_be_shown_without_expiry(self):
+        page = render.render_remaining(self.build({"apiKey": "k"}), "en")
+        self.assertIn("No expiry", page)
+
+    def test_a_readable_expiry_is_shown_as_a_duration(self):
+        conn = self.build({
+            "accessToken": "a", "refreshToken": "r",
+            "expiresAt": int(time.time() * 1000) + 3_600_000,
+        })
+        self.assertIn("min", render.render_remaining(conn, "en"))
+
+    def test_every_language_has_both_labels(self):
+        for lang in ("en", "pt", "es"):
+            for key in ("duration.unknown_expiry", "duration.no_expiry"):
+                self.assertTrue(i18n.translate(key, lang))

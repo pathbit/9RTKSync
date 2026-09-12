@@ -89,7 +89,7 @@ class DashboardHandler(BaseHTTPRequestHandler):
         self.send_header("WWW-Authenticate", 'Basic realm="9RTKSync Dashboard"')
         self.send_header("Content-Type", "text/plain; charset=utf-8")
         self.end_headers()
-        self.write_body(b"Authentication required. Default credentials: admin / pathbit")
+        self.write_body(b"Authentication required.")
         return False
 
     def do_GET(self):
@@ -116,17 +116,27 @@ class DashboardHandler(BaseHTTPRequestHandler):
         O Basic Auth e anexado automaticamente pelo navegador mesmo em um POST
         vindo de outra origem, e um formulario urlencoded nao dispara preflight.
         Sem esta checagem, uma pagina maliciosa aberta na mesma maquina poderia
-        trocar a senha do painel. Nao se usa Referer porque a propria pagina e
-        servida com Referrer-Policy: no-referrer.
+        trocar a senha do painel.
+
+        A ordem importa: o Origin e a evidencia forte e e avaliado primeiro.
+        Checar Sec-Fetch-Site antes disso fazia um valor inesperado do navegador
+        recusar a requisicao mesmo com o Origin batendo com o Host. Nao se usa
+        Referer porque a propria pagina e servida com Referrer-Policy: no-referrer.
         """
+        host = self.headers.get("Host", "")
+        origin = self.headers.get("Origin", "")
+
+        if origin and origin != "null":
+            # Comparacao pelo host declarado: mesma origem, requisicao legitima.
+            if urlparse(origin).netloc == host:
+                return True
+            # Origin presente e divergente e a unica prova positiva de ataque.
+            return False
+
         fetch_site = self.headers.get("Sec-Fetch-Site", "")
         if fetch_site:
             # "none" e a navegacao digitada na barra de enderecos.
             return fetch_site in ("same-origin", "none")
-
-        origin = self.headers.get("Origin", "")
-        if origin:
-            return urlparse(origin).netloc == self.headers.get("Host", "")
 
         # Cliente que nao e navegador (curl, script): nao ha sessao a sequestrar.
         return True
@@ -136,7 +146,11 @@ class DashboardHandler(BaseHTTPRequestHandler):
             return
 
         if not self.is_same_origin_request():
-            self.send_error(HTTPStatus.FORBIDDEN, "Cross-origin request rejected")
+            # Devolve o usuario para o painel explicando o motivo, em vez de uma
+            # pagina de erro crua sem caminho de volta.
+            self.redirect_to_dashboard(
+                "danger", translate("security.cross_origin", self.resolve_language())
+            )
             return
 
         length = int(self.headers.get("Content-Length", 0))
@@ -308,44 +322,26 @@ class DashboardHandler(BaseHTTPRequestHandler):
             self.close_connection = True
 
     def serve_healthz(self):
+        """Health check do Docker: barato, sem cache do navegador e sem excecao no log.
+
+        A sondagem ao gateway passa por probe_router, que memoriza o resultado;
+        sem isso cada probe pagava ate 3s de HTTP de saida e estourava o timeout
+        do healthcheck, que fechava o socket e gerava BrokenPipeError.
+        """
         db_ok = bool(self.db_path and os.path.exists(self.db_path))
-        router_ok = True
-        if self.router_url:
-            now = time.time()
-            if now - DashboardHandler._last_gw_check < 15.0:
-                router_ok = DashboardHandler._last_gw_ok
-            else:
-                try:
-                    req = urllib.request.Request(
-                        self.router_url,
-                        headers={"User-Agent": "9RTKSync-Healthcheck/1.0"},
-                    )
-                    with urllib.request.urlopen(req, timeout=3.0) as resp:
-                        router_ok = resp.status < 500
-                except urllib.error.HTTPError as e:
-                    router_ok = e.code < 500
-                except Exception:
-                    router_ok = False
-                DashboardHandler._last_gw_check = now
-                DashboardHandler._last_gw_ok = router_ok
+        router_ok = self.probe_router()
 
         if db_ok and router_ok:
-            self.send_response(HTTPStatus.OK)
-            self.send_header("Content-Type", "text/plain")
-            self.send_header("Cache-Control", "no-store")
-            self.end_headers()
-            self.wfile.write(b"OK")
+            status, payload = HTTPStatus.OK, b"OK"
+        elif not db_ok:
+            status, payload = HTTPStatus.SERVICE_UNAVAILABLE, b"DATABASE_NOT_READY"
         else:
-            reason = "DATABASE_NOT_READY" if not db_ok else "ROUTER_SERVICE_UNREACHABLE"
-            self.send_response(HTTPStatus.SERVICE_UNAVAILABLE)
-            self.send_header("Content-Type", "text/plain")
-            self.send_header("Cache-Control", "no-store")
-            self.end_headers()
-            self.wfile.write(reason.encode("utf-8"))
+            status, payload = HTTPStatus.SERVICE_UNAVAILABLE, b"ROUTER_SERVICE_UNREACHABLE"
 
         self.send_response(status)
-        self.send_header("Content-Type", "text/plain")
+        self.send_header("Content-Type", "text/plain; charset=utf-8")
         self.send_header("Content-Length", str(len(payload)))
+        self.send_header("Cache-Control", "no-store")
         self.end_headers()
         self.write_body(payload)
 

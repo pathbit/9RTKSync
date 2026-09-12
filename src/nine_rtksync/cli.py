@@ -117,14 +117,18 @@ def main():
     # The file log must exist before any event from the sync engine.
     logger = setup_logging(settings.db_path)
 
-    # Break-glass credential: generated once and written to the log, so the operator
-    # can get back into the panel after forgetting the password set on the screen.
+    # Break-glass credential: generated once so the operator can get back into the
+    # panel after forgetting the password set on the screen.
+    #
+    # O valor NAO vai para o log. Ele e uma credencial funcional, e o stdout do
+    # container costuma ser coletado, encaminhado e lido por muita gente; fica
+    # apenas no arquivo com modo 0600, e o log diz onde encontra-lo.
     recovery_hash, generated_now = settings.ensure_recovery_hash()
     if generated_now and recovery_hash:
         logger.warning(
-            "[AUTH] Recovery hash generated. To recover access use user 'admin' and "
-            "this password: %s (keep it safe; set DASHBOARD_RECOVERY_HASH to pin your own)",
-            recovery_hash,
+            "[AUTH] Recovery credential generated for user 'admin'. Read it with: "
+            "docker exec <container> cat %s  (or pin your own with DASHBOARD_RECOVERY_HASH)",
+            settings.get_recovery_file_path(),
         )
 
     if args.db_path:
