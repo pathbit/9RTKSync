@@ -168,3 +168,40 @@ class TestCarimboDeRenovacao(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestFraseDaSondagem(unittest.TestCase):
+    """Um 400 prova que a autenticação passou; a frase tem de dizer isso.
+
+    A sonda envia corpo vazio de propósito: o provedor só reclama do corpo
+    depois de aceitar a chave. A classificação está certa há tempo, mas a
+    frase "API key accepted by the provider (HTTP 400)" fazia o painel
+    parecer errado justamente quando estava certo.
+    """
+
+    def mensagens(self, estado, detalhe):
+        import unittest.mock
+        from nine_rtksync.credential_check import CheckResult
+        from nine_rtksync.providers import ApiKeyProvider
+
+        provider = ApiKeyProvider(validate_credentials=True)
+        with unittest.mock.patch(
+            "nine_rtksync.providers.api_keys.check_api_key",
+            return_value=CheckResult(state=estado, detail=detalhe, checked_at="2026-01-01T00:00:00Z"),
+        ):
+            _, _, msgs = provider.check_and_refresh(conexao("groq", apiKey="gsk_a"))
+        return msgs
+
+    def test_a_plain_200_reads_as_a_clean_acceptance(self):
+        from nine_rtksync.credential_check import STATE_VALID
+
+        m = " ".join(self.mensagens(STATE_VALID, "HTTP 200"))
+        self.assertIn("Authentication accepted", m)
+        self.assertNotIn("refused", m)
+
+    def test_a_400_says_what_the_number_means(self):
+        from nine_rtksync.credential_check import STATE_VALID
+
+        m = " ".join(self.mensagens(STATE_VALID, "HTTP 400"))
+        self.assertIn("Authentication accepted", m)
+        self.assertIn("probe request itself was refused", m)

@@ -97,7 +97,16 @@ class ApiKeyProvider(BaseProvider):
 
             if result.state == STATE_VALID:
                 data["testStatus"] = "active"
-                messages.append(f"API key accepted by the provider ({result.detail})")
+                # A 4xx other than 401/403 still proves authentication went
+                # through -- the probe sends an empty body on purpose, and the
+                # provider only gets to complain about the body after it has
+                # accepted the key. Saying just "accepted (HTTP 400)" made the
+                # screen look wrong; the sentence now explains the number.
+                messages.append(
+                    f"Authentication accepted by the provider ({result.detail})"
+                    if result.detail and "200" in str(result.detail)
+                    else f"Authentication accepted; the probe request itself was refused ({result.detail})"
+                )
             elif result.state == STATE_INVALID:
                 # Do not claim health the provider just denied.
                 data["testStatus"] = "invalid"
@@ -105,7 +114,7 @@ class ApiKeyProvider(BaseProvider):
             elif result.state == STATE_RATE_LIMITED:
                 messages.append(f"Provider rate limited the validation ({result.detail})")
             elif result.state == STATE_UNREACHABLE:
-                messages.append(f"Provider unreachable, key not verified: {result.detail}")
+                messages.append(f"Key not verified: {result.detail}")
             else:
                 messages.append(result.detail or "Credential not verifiable")
 
