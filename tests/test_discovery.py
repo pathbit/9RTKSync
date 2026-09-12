@@ -5,13 +5,13 @@ import os
 import shutil
 import tempfile
 import unittest
+import unittest.mock
 
 from nine_rtksync.discovery import HostDiscoveryEngine
 from nine_rtksync.models import ConnectionRecord
 from nine_rtksync.providers.api_keys import ApiKeyProvider
 from nine_rtksync.providers.google import GoogleProvider
 from nine_rtksync.providers.local import LocalProvider
-from nine_rtksync.providers.oauth import GenericOAuthProvider
 
 
 class TestDiscoveryEngine(unittest.TestCase):
@@ -112,7 +112,9 @@ class TestDiscoveryEngine(unittest.TestCase):
         self.assertTrue(mod)
         self.assertEqual(data["apiKey"], "sk-ant-new-host")
 
-        # 3. Local Provider handles Ollama
+        # 3. Local Provider handles Ollama.
+        # The catalog probe is stubbed so the test never depends on something
+        # actually listening on 11434 — it passed locally and failed in CI before.
         lp = LocalProvider()
         conn_ollama = ConnectionRecord(
             id="c3",
@@ -123,9 +125,27 @@ class TestDiscoveryEngine(unittest.TestCase):
             data_raw=json.dumps({"baseUrl": "http://127.0.0.1:11434/v1"}),
         )
         self.assertTrue(lp.can_handle(conn_ollama))
-        mod, data, msgs = lp.check_and_refresh(conn_ollama)
-        self.assertTrue(mod)
+
+        # O primeiro elemento conta renovacao de credencial; uma sondagem local
+        # nunca renova nada, entao e sempre False. O que prova que funcionou e o
+        # dicionario devolvido para gravacao.
+        with unittest.mock.patch.object(
+            LocalProvider, "discover_models", return_value=(["llama3.2:3b", "qwen2.5:7b"], "")
+        ):
+            renewed, data, msgs = lp.check_and_refresh(conn_ollama)
+        self.assertFalse(renewed, "sondagem local nao pode contar como renovacao no ciclo")
+        self.assertIsNotNone(data)
         self.assertEqual(data["testStatus"], "active")
+        self.assertEqual(data["discoveredModels"], ["llama3.2:3b", "qwen2.5:7b"])
+
+        # An instance that stops answering must not be reported as healthy.
+        with unittest.mock.patch.object(
+            LocalProvider, "discover_models", return_value=([], "Connection refused")
+        ):
+            renewed, data, msgs = lp.check_and_refresh(conn_ollama)
+        self.assertFalse(renewed)
+        self.assertIsNotNone(data)
+        self.assertEqual(data["testStatus"], "unreachable")
 
 
 if __name__ == "__main__":

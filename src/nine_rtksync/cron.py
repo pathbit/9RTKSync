@@ -5,6 +5,32 @@ import time
 from datetime import datetime, timezone
 from typing import Any, Callable, Dict, List, Optional
 
+from .logs import get_logger
+
+
+def _extract_log_lines(res: Any) -> List[str]:
+    """Extract the actions the sync engine recorded during this cycle.
+
+    Keeps only what explains the outcome — error, renewal, self-healing. A cycle
+    with nothing to do returns an empty list, and the screen shows it as such.
+    """
+    if not isinstance(res, dict):
+        return [f"Unexpected engine result: {res!r}"]
+
+    lines: List[str] = []
+    if res.get("error"):
+        lines.append(f"ERRO: {res['error']}")
+
+    for detail in res.get("details", []) or []:
+        actions = detail.get("actions") or []
+        if not actions:
+            continue
+        label = f"{detail.get('provider', '?')} · {detail.get('name', '?')}"
+        for action in actions:
+            lines.append(f"{label}: {action}")
+
+    return lines
+
 
 class CronScheduler:
     """Background scheduler managing continuous OAuth account renewals and connection health."""
@@ -75,7 +101,7 @@ class CronScheduler:
         start_iso = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
 
         ts_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        print(f"[{ts_str}] [CRON] Cycle triggered ({reason}). Inspecting OAuth account connections...", flush=True)
+        get_logger().info(f"[CRON] Cycle triggered ({reason}). Inspecting OAuth account connections...")
 
         try:
             res = self.sync_callback()
@@ -94,6 +120,7 @@ class CronScheduler:
             "refreshedCount": refreshed,
             "success": res.get("success", True) if isinstance(res, dict) else False,
             "error": res.get("error") if isinstance(res, dict) else None,
+            "log": _extract_log_lines(res),
         }
 
         with self._lock:
@@ -106,10 +133,9 @@ class CronScheduler:
                 self.history.pop(0)
             self._update_next_run(self.interval_seconds)
 
-        end_ts = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        print(
-            f"[{end_ts}] [CRON] Cycle completed in {duration_ms}ms: {total} accounts evaluated, {refreshed} renewed via OAuth.",
-            flush=True,
+        get_logger().info(
+            f"[CRON] Cycle completed in {duration_ms}ms: {total} accounts evaluated, "
+            f"{refreshed} renewed via OAuth."
         )
         return entry
 

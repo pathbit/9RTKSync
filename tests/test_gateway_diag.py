@@ -10,7 +10,7 @@ import unittest
 from unittest.mock import patch, MagicMock
 
 from nine_rtksync.config import Settings
-from nine_rtksync.web.server import DashboardHandler, start_web_server
+from nine_rtksync.web.server import start_web_server
 
 
 class TestGatewayDiag(unittest.TestCase):

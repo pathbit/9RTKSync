@@ -7,7 +7,6 @@ import sqlite3
 import tempfile
 import urllib.error
 import urllib.request
-from http import HTTPStatus
 import unittest
 
 from nine_rtksync.config import Settings

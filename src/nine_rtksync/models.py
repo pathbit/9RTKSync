@@ -46,6 +46,79 @@ class ConnectionRecord:
     def api_key(self) -> Optional[str]:
         return self.data.get("apiKey")
 
+    # Provider names that suggest a local / OpenAI-compatible instance. A marker
+    # alone is not proof: "ollama" is also the name of Ollama Cloud, which is a
+    # hosted service and must never be probed on /api/tags.
+    LOCAL_PROVIDER_MARKERS = ("ollama", "vllm", "lmstudio", "llamacpp", "localai", "openai-compatible")
+    LOCAL_HOSTS = ("localhost", "127.0.0.1", "0.0.0.0", "::1", "host.docker.internal", ".local")
+
+    @property
+    def is_local(self) -> bool:
+        """Whether the connection really points at an instance on this machine.
+
+        Classification is driven by the address, not by the provider name. Only
+        when no address is declared does a marker like "openai-compatible" --
+        which has no hosted counterpart -- stand on its own.
+        """
+        base_url = str(self.base_url or "").lower()
+        if base_url:
+            return any(host in base_url for host in self.LOCAL_HOSTS)
+
+        # No address: "openai-compatible" only exists as a self-hosted endpoint,
+        # whereas "ollama" without a baseUrl is the cloud account.
+        return "openai-compatible" in self.provider.lower()
+
+    @property
+    def base_url(self) -> Optional[str]:
+        """Provider base URL, when declared.
+
+        9Router keeps it inside providerSpecificData, not at the root of data --
+        reading only the root is why local instances used to show no models.
+        """
+        specific = self.data.get("providerSpecificData")
+        if isinstance(specific, dict):
+            nested = specific.get("baseUrl") or specific.get("baseURL")
+            if nested:
+                return nested
+        return self.data.get("baseUrl") or self.data.get("baseURL") or None
+
+    @property
+    def local_models(self) -> list:
+        """Models discovered on the local instance during the last sweep."""
+        models = self.data.get("discoveredModels") or self.data.get("models") or []
+        if isinstance(models, str):
+            return [models]
+        return [str(m) for m in models if m]
+
+    @property
+    def egress_binding(self) -> Optional[str]:
+        """Proxy pool this connection egresses through, when one is bound.
+
+        Read-only: the binding is owned by the gateway, and 9Router keeps it in
+        ``providerSpecificData`` as ``proxyPoolId`` plus the per-connection
+        ``connectionProxyEnabled`` switch. It is surfaced here because an
+        account that shares one outbound address with every other account is
+        the state operators most want to notice, and nothing in the panel used
+        to show it.
+        """
+        specific = self.data.get("providerSpecificData")
+        if not isinstance(specific, dict):
+            return None
+        if specific.get("connectionProxyEnabled") is not True:
+            return None
+        pool = specific.get("proxyPoolId")
+        return str(pool) if pool else None
+
+    @property
+    def egress_status(self) -> str:
+        """One of: ``bound`` (own pool), ``shared`` (gateway default), ``unknown``."""
+        specific = self.data.get("providerSpecificData")
+        if not isinstance(specific, dict):
+            return "unknown"
+        if specific.get("connectionProxyEnabled") is True and specific.get("proxyPoolId"):
+            return "bound"
+        return "shared"
+
     @property
     def expires_at_ms(self) -> Optional[int]:
         """Return normalized expiration timestamp in epoch milliseconds, if applicable."""
@@ -73,8 +146,46 @@ class ConnectionRecord:
         return rem is not None and rem <= 0
 
     @property
+    def last_refresh_at(self) -> Optional[str]:
+        """Quando a credencial foi renovada/verificada pela ultima vez.
+
+        lastRefreshAt e gravado na renovacao de OAuth; lastTested, na validacao
+        da credencial. Sem expor isto, o painel diz "0 renovadas" e nao ha como
+        saber se a ultima renovacao foi ha um minuto ou ha uma semana.
+        """
+        return (
+            self.data.get("lastRefreshAt")
+            or self.data.get("credentialCheckedAt")
+            or self.data.get("lastTested")
+            or None
+        )
+
+    @property
+    def credential_state(self) -> Optional[str]:
+        """Result of the last live credential probe, when one was recorded.
+
+        Written by credential_check.py, never by the gateway.
+        """
+        state = self.data.get("credentialState")
+        return str(state) if state else None
+
+    @property
     def health_status(self) -> str:
-        """Semantic classification of connection health."""
+        """Semantic classification of connection health.
+
+        A live probe outranks everything else: a key the provider rejects is
+        broken no matter what the gateway last stamped. Local instances are
+        classified before the API-key branch because they carry a facade key
+        and would otherwise never reach their own test.
+        """
+        probed = self.credential_state
+        if probed in ("invalid", "rate_limited", "unreachable"):
+            return probed
+
+        if self.is_local:
+            # A local instance is only healthy when its model catalog answered.
+            return "unknown" if self.data.get("testStatus") == "unreachable" else "active"
+
         if self.is_oauth:
             rem = self.remaining_seconds
             if rem is None:
@@ -84,10 +195,12 @@ class ConnectionRecord:
             if rem < 900:
                 return "expiring_soon"
             return "active"
+
         if self.has_api_key:
             if self.data.get("rateLimitedUntil"):
                 return "rate_limited"
-            return "active"
-        if self.data.get("baseUrl") or "ollama" in self.provider.lower():
-            return "active"
-        return "active" if self.data.get("testStatus") in ("active", "ok", "success") else "unknown"
+            # Never probed yet: say so instead of claiming health nobody verified.
+            return "active" if probed == "valid" else "not_checked"
+
+        # 9Router writes "ok", OmniRoute writes "active"; both mean healthy.
+        return "active" if self.data.get("testStatus") in ("ok", "active", "success") else "unknown"

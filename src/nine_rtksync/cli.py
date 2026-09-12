@@ -6,6 +6,7 @@ import sys
 from .config import Settings
 from .daemon import SyncEngine, run_daemon
 from .database import get_all_combos, get_all_connections
+from .logs import setup_logging
 from .web.server import start_web_server
 
 
@@ -15,15 +16,15 @@ def print_status_table(settings: Settings):
         conns = get_all_connections(settings.db_path)
         combos = get_all_combos(settings.db_path)
     except Exception as e:
-        print(f"❌ Error querying SQLite database ({settings.db_path}): {e}", file=sys.stderr)
+        print(f"[ERROR] Error querying SQLite database ({settings.db_path}): {e}", file=sys.stderr)
         sys.exit(1)
 
     print("\n" + "=" * 76)
-    print("⚡ 9RTKSYNC · 9ROUTER CONNECTIONS AND COMBOS STATUS")
+    print("[*] 9RTKSYNC · 9ROUTER CONNECTIONS AND COMBOS STATUS")
     print(f"   Database: {settings.db_path}")
     print("=" * 76)
 
-    print(f"\n🔌 Registered Connections ({len(conns)}):")
+    print(f"\n[*] Registered Connections ({len(conns)}):")
     print(f"  {'PROVIDER':<16} {'NAME':<26} {'TYPE':<10} {'STATUS':<10} {'VALIDITY':<14}")
     print("  " + "-" * 74)
 
@@ -38,12 +39,14 @@ def print_status_table(settings: Settings):
             else:
                 val_str = f"{rem // 60} min ({rem}s)"
         else:
-            val_str = "Unlimited"
+            # Chave de API nao carrega validade; dizer "ilimitada" seria
+            # uma afirmacao que nada no dado sustenta.
+            val_str = "Not applicable"
 
-        status_icon = "✅" if c.health_status in ("active", "no_expiration") else ("⚠️" if c.health_status == "expirando_em_breve" or c.health_status == "expiring_soon" else "❌")
+        status_icon = "[ok]" if c.health_status in ("active", "no_expiration") else ("[!]" if c.health_status == "expirando_em_breve" or c.health_status == "expiring_soon" else "[ERROR]")
         print(f"  {c.provider:<16} {c.name[:25]:<26} {tipo:<10} {status_icon} {c.health_status:<7} {val_str:<14}")
 
-    print(f"\n🔀 Resilience & Fallback Combos ({len(combos)}):")
+    print(f"\n[*] Resilience & Fallback Combos ({len(combos)}):")
     print(f"  {'COMBO NAME':<26} {'TYPE':<12} {'CASCADE MODELS'}")
     print("  " + "-" * 74)
 
@@ -97,7 +100,7 @@ def main():
     parser.add_argument(
         "--port",
         type=int,
-        help="Port for embedded web server (default: 9190)",
+        help="Port for embedded web server (default: 9090)",
     )
     parser.add_argument(
         "--user",
@@ -107,22 +110,48 @@ def main():
     parser.add_argument(
         "--password",
         type=str,
-        help="Password for web dashboard authentication (default: pathbit)",
+        help="Password for the web dashboard (no factory default; set it on the screen)",
     )
 
     args = parser.parse_args()
     settings = Settings.from_env()
 
+    # As opcoes de linha de comando sao aplicadas ANTES de qualquer estado
+    # persistente ser resolvido. Com --db-path apontando para outro lugar, o log
+    # e a credencial de recuperacao nasciam ao lado do banco antigo, e a
+    # autenticacao depois procurava o arquivo ao lado do banco novo: a
+    # credencial de emergencia gerada e anunciada nunca abria o painel.
     if args.db_path:
         settings.db_path = args.db_path
     if args.interval:
         settings.sync_interval = args.interval
+        # O agendador le cron_interval, que ja foi derivado do ambiente antes de
+        # as opcoes chegarem aqui. Sem esta linha, --interval 60 aparecia no
+        # banner de inicializacao e o cron seguia no intervalo antigo.
+        settings.cron_interval = args.interval
+    if args.port:
+        settings.web_port = args.port
+
+    logger = setup_logging(settings.db_path)
+
+    # Break-glass credential: generated once so the operator can get back into the
+    # panel after forgetting the password set on the screen.
+    #
+    # O valor NAO vai para o log. Ele e uma credencial funcional, e o stdout do
+    # container costuma ser coletado, encaminhado e lido por muita gente; fica
+    # apenas no arquivo com modo 0600, e o log diz onde encontra-lo.
+    recovery_hash, generated_now = settings.ensure_recovery_hash()
+    if generated_now and recovery_hash:
+        logger.warning(
+            "[AUTH] Recovery credential generated for user 'admin'. Read it with: "
+            "docker exec <container> cat %s  (or pin your own with DASHBOARD_RECOVERY_HASH)",
+            settings.get_recovery_file_path(),
+        )
+
     if args.margin:
         settings.refresh_margin = args.margin
     if args.no_web:
         settings.enable_web = False
-    if args.port:
-        settings.web_port = args.port
     if args.user:
         settings.dashboard_user = args.user
     if args.password:

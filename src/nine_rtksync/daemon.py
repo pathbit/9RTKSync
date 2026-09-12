@@ -2,6 +2,7 @@
 
 import os
 import signal
+import threading
 import sys
 import time
 from datetime import datetime, timezone
@@ -12,15 +13,35 @@ from .config import Settings
 from .cron import CronScheduler
 from .database import get_all_connections, update_connection_data
 from .discovery import HostDiscoveryEngine
+from .logs import get_logger
 from .models import ConnectionRecord
 from .normalizer import normalize_connection_data
 from .providers import ApiKeyProvider, BaseProvider, GenericOAuthProvider, GoogleProvider, LocalProvider
 from .web.server import start_web_server
 
 
+# Prefixes that describe a failure. Emitting everything at INFO meant that
+# LOG_LEVEL=WARNING hid exactly the events the persistent log exists for:
+# raising the level to cut noise silently dropped every failure.
+ERROR_PREFIXES = {"FAILURE", "ERROR", "FALHA", "ERRO"}
+WARNING_PREFIXES = {"WARNING", "WARN", "AVISO"}
+
+
 def log_msg(prefix: str, text: str):
-    ts = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    print(f"[{ts}] [{prefix}] {text}", flush=True)
+    """Record an event in the persistent log (and on stdout, if LOG_TO_STDOUT allows).
+
+    The level follows the prefix: failures go out as ERROR, warnings as WARNING,
+    everything else as INFO.
+    """
+    logger = get_logger()
+    message = f"[{prefix}] {text}"
+    marker = str(prefix).upper()
+    if marker in ERROR_PREFIXES:
+        logger.error(message)
+    elif marker in WARNING_PREFIXES:
+        logger.warning(message)
+    else:
+        logger.info(message)
 
 
 class SyncEngine:
@@ -28,6 +49,12 @@ class SyncEngine:
 
     def __init__(self, settings: Settings):
         self.settings = settings
+        # O botao da tela e o cron chamam esta mesma instancia, e o servidor web
+        # atende cada requisicao em uma thread. Duas passagens simultaneas leem e
+        # regravam o mesmo JSON de conexao de forma independente: duas renovacoes
+        # OAuth concorrentes podem sobrescrever um token recem-rotacionado. Uma
+        # execucao por vez.
+        self._sync_lock = threading.Lock()
         self.discovery = HostDiscoveryEngine(
             host_home=settings.host_home,
             extra_paths=settings.credential_paths,
@@ -35,12 +62,25 @@ class SyncEngine:
         self.providers: List[BaseProvider] = [
             GoogleProvider(credential_paths=settings.credential_paths, discovery=self.discovery),
             GenericOAuthProvider(discovery=self.discovery),
-            ApiKeyProvider(discovery=self.discovery),
+            ApiKeyProvider(
+                discovery=self.discovery,
+                validate_credentials=settings.validate_credentials,
+                validation_timeout=settings.validation_timeout,
+            ),
             LocalProvider(),
         ]
 
     def sync_all(self) -> Dict[str, Any]:
-        """Execute a full synchronization cycle across all registered accounts."""
+        """Execute a full synchronization cycle across all registered accounts.
+
+        Serialized: a manual run from the dashboard and a scheduled run must
+        never overlap, or two concurrent OAuth renewals can overwrite each
+        other's freshly rotated token.
+        """
+        with self._sync_lock:
+            return self._sync_all_locked()
+
+    def _sync_all_locked(self) -> Dict[str, Any]:
         if not os.path.exists(self.settings.db_path):
             log_msg("ERROR", f"SQLite database not found at: {self.settings.db_path}")
             return {"success": False, "error": "db_not_found"}
@@ -103,12 +143,26 @@ class SyncEngine:
                             log_msg("STATUS", f"[{conn.provider} · {conn.name}] {note}")
                             conn_detail["actions"].append(note)
 
-                        if renewed and refreshed_data:
-                            summary["refreshed"] += 1
+                        # Gravar e contar sao decisoes separadas. Sondagem de
+                        # chave e de instancia local muda a linha (horario da
+                        # verificacao, catalogo, estado) sem renovar nada: se o
+                        # mesmo booleano decidisse os dois, ou o painel relia
+                        # linha velha, ou o ciclo anunciava renovacao que nao
+                        # houve.
+                        if refreshed_data:
                             update_connection_data(self.settings.db_path, conn.id, refreshed_data)
+                        if renewed:
+                            summary["refreshed"] += 1
                             log_msg("SUCCESS", f"[{conn.provider} · {conn.name}] Credentials updated successfully in SQLite")
                     except Exception as e:
                         log_msg("FAILURE", f"[{conn.provider} · {conn.name}] Provider error: {e}")
+                        # Sem isto a excecao some do resumo: o agendador marca o
+                        # ciclo como bem-sucedido e o historico da tela nao
+                        # mostra a falha que acabou de acontecer.
+                        summary.setdefault("errors", []).append(
+                            f"[{conn.provider} · {conn.name}] {e}"
+                        )
+                        conn_detail["actions"].append(f"Provider error: {e}")
                     break
 
             if not handled:
@@ -116,6 +170,10 @@ class SyncEngine:
 
             summary["details"].append(conn_detail)
 
+        # O agendador deriva o resultado do ciclo de summary["success"]. Sem
+        # isto, um provider que levantou excecao aparecia no historico e o ciclo
+        # ainda era anunciado como bem-sucedido.
+        summary["success"] = not summary.get("errors")
         return summary
 
 
@@ -133,7 +191,7 @@ def run_daemon(settings: Settings):
     signal.signal(signal.SIGTERM, handle_signal)
 
     print("=" * 70, flush=True)
-    print("⚡ 9RTKSYNC · 9ROUTER UNIVERSAL TOKEN & CONNECTION SYNCHRONIZER", flush=True)
+    print("[*] 9RTKSYNC · 9ROUTER UNIVERSAL TOKEN & CONNECTION SYNCHRONIZER", flush=True)
     print(f"   SQLite DB:    {settings.db_path}", flush=True)
     print(f"   Gateway URL:  {settings.router_url}", flush=True)
     print(f"   Host Home:    {engine.discovery.host_home}", flush=True)
@@ -153,7 +211,7 @@ def run_daemon(settings: Settings):
     # Initialize dedicated CronScheduler for continuous OAuth renewal
     cron_scheduler = CronScheduler(
         sync_callback=engine.sync_all,
-        interval_seconds=settings.sync_interval,
+        interval_seconds=settings.cron_interval,
         name="9RTKSync-CronScheduler",
     )
 
@@ -169,12 +227,15 @@ def run_daemon(settings: Settings):
                 settings=settings,
                 cron_scheduler=cron_scheduler,
             )
-            print(f"🌐 Web Dashboard active at: http://{settings.web_host}:{settings.web_port}", flush=True)
+            print(f"[*] Web Dashboard active at: http://{settings.web_host}:{settings.web_port}", flush=True)
         except Exception as e:
-            print(f"⚠️ Could not start web dashboard on port {settings.web_port}: {e}", flush=True)
+            print(f"[!] Could not start web dashboard on port {settings.web_port}: {e}", flush=True)
 
     # Start background scheduler
-    cron_scheduler.start()
+    if settings.cron_enabled:
+        cron_scheduler.start()
+    else:
+        print("[*] Automatic scheduler disabled (CRON_ENABLED=0); use manual trigger.", flush=True)
 
     while running:
         time.sleep(1)
