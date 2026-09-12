@@ -9,6 +9,9 @@ from .auth import (
     RECOVERY_FILE_NAME,
     ensure_recovery_hash,
     read_stored_credentials,
+    read_db_credentials,
+    write_db_credentials,
+    validate_password_strength,
     resolve_recovery_hash,
     verify_credentials,
 )
@@ -81,7 +84,11 @@ class Settings:
         """Credenciais gravadas pela tela, ou None quando o ambiente é autoritativo."""
         if self.dashboard_auth_from_env:
             return None
-        return read_stored_credentials(self.get_auth_file_path())
+        # O SQLite do painel e a fonte de verdade; o .dashboard_auth.json so
+        # existe para nao trancar quem ja tinha senha antes desta mudanca.
+        return read_db_credentials(self.get_prefs_path()) or read_stored_credentials(
+            self.get_auth_file_path()
+        )
 
     def verify_credentials(self, user: str, password: str) -> bool:
         """Valida um par usuário/senha, incluindo a credencial de recuperação."""
@@ -93,6 +100,18 @@ class Settings:
             factory_password=self.dashboard_password,
             recovery_hash=self.get_recovery_hash(),
         )
+
+    def get_prefs_path(self) -> str:
+        """Banco SQLite do painel, onde vivem preferencias e credenciais."""
+        from .prefs import resolve_prefs_path
+
+        return resolve_prefs_path(os.path.dirname(self.get_auth_file_path()))
+
+    def has_stored_password(self) -> bool:
+        """Se ja existe senha definida pelo usuario no banco do painel."""
+        if self.dashboard_auth_from_env:
+            return True
+        return read_db_credentials(self.get_prefs_path()) is not None
 
     def get_auth_file_path(self) -> str:
         """Return the filesystem path for persisted dashboard credentials."""
@@ -125,28 +144,44 @@ class Settings:
         return self.dashboard_user, self.dashboard_password
 
     def is_default_password(self) -> bool:
-        """Check if the active password is still the factory default (pathbit)."""
-        _, p = self.get_auth_credentials()
-        return p == "pathbit"
+        """Se o painel ainda roda sem senha propria.
+
+        O aviso de seguranca depende disto: ele some assim que existe uma senha
+        gravada no SQLite, e nao quando o texto deixa de ser "pathbit".
+        """
+        return not self.has_stored_password()
+
+    def check_password_strength(self, new_pass: str) -> list:
+        """Chaves de traducao das regras de senha que o valor nao cumpre."""
+        return validate_password_strength(new_pass)
 
     def update_auth_credentials(self, user: str, new_pass: str) -> bool:
-        """Save new dashboard credentials to the secure credentials file."""
-        # In headless mode the environment is immutable from the screen — writing the
-        # file here would create phantom state that get_auth_credentials never reads.
+        """Grava as credenciais do painel no SQLite, como hash.
+
+        Recusa senha fraca: a politica de forca e obrigatoria. Em modo headless
+        o ambiente e imutavel pela tela, e gravar aqui criaria estado fantasma
+        que get_auth_credentials nunca leria.
+        """
         if self.dashboard_auth_from_env:
             return False
 
-        auth_file = self.get_auth_file_path()
-        try:
-            import json
-            payload = {"user": user.strip() or "admin", "password": new_pass.strip()}
-            with open(auth_file, "w", encoding="utf-8") as f:
-                json.dump(payload, f)
-            self.dashboard_user = payload["user"]
-            self.dashboard_password = payload["password"]
-            return True
-        except Exception:
+        new_pass = (new_pass or "").strip()
+        if validate_password_strength(new_pass):
             return False
+
+        final_user = (user or "").strip() or "admin"
+        if not write_db_credentials(self.get_prefs_path(), final_user, new_pass):
+            return False
+
+        self.dashboard_user = final_user
+        self.dashboard_password = new_pass
+        # O arquivo em texto puro perde a razao de existir assim que a senha
+        # passa a viver no banco.
+        try:
+            os.remove(self.get_auth_file_path())
+        except OSError:
+            pass
+        return True
 
     @classmethod
     def from_env(cls, env_file: str = ".env") -> "Settings":

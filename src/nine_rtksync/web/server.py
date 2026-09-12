@@ -15,7 +15,7 @@ from typing import Any, Callable, Dict, Optional
 from urllib.parse import parse_qs, urlparse
 
 from ..config import Settings
-from ..i18n import DEFAULT_LANGUAGE, normalize_language
+from ..i18n import DEFAULT_LANGUAGE, normalize_language, translate
 from ..prefs import get_preference, resolve_prefs_path, set_preference
 from ..database import get_all_combos, get_all_connections
 from ..models import ConnectionRecord
@@ -171,14 +171,34 @@ class DashboardHandler(BaseHTTPRequestHandler):
         self.send_header("Content-Length", "0")
         self.end_headers()
 
+    def invalidate_caches(self) -> None:
+        """Descarta o que foi memorizado para que a proxima renderizacao releia tudo.
+
+        Sem isto, o resultado da sondagem ao gateway continuaria valendo por ate
+        30s e o painel exibiria um estado anterior a acao que o usuario acabou
+        de disparar.
+        """
+        with _router_probe_lock:
+            _router_probe_cache.clear()
+
     def handle_dashboard_action(self, route: str, raw_body: bytes) -> None:
         """Executa uma acao do painel e devolve o usuario para a pagina renderizada."""
+        if route == "/acoes/atualizar":
+            # Recarga completa: zera os caches e volta para a pagina, que e
+            # montada de novo no servidor a partir do banco.
+            self.invalidate_caches()
+            self.redirect_to_dashboard("info", translate("action.refreshed", self.resolve_language()))
+            return
+
         if route == "/acoes/sincronizar":
             if not self.sync_trigger_callback:
                 self.redirect_to_dashboard("warning", "Sincronizacao manual indisponivel nesta instancia.")
                 return
             try:
                 res = self.sync_trigger_callback() or {}
+                # A sincronizacao muda o estado do gateway: o cache anterior
+                # deixaria a tela mostrando o mundo de antes da acao.
+                self.invalidate_caches()
                 self.redirect_to_dashboard(
                     "success",
                     f"Sincronizacao concluida: {res.get('total_connections', 0)} conexoes inspecionadas, "
@@ -229,8 +249,15 @@ class DashboardHandler(BaseHTTPRequestHandler):
             new_user = (fields.get("user", [""])[0] or "").strip()
             new_pass = (fields.get("password", [""])[0] or "").strip()
 
-            if len(new_pass) < 4:
-                self.redirect_to_dashboard("danger", "A senha deve conter ao menos 4 caracteres.")
+            # A politica de forca e obrigatoria: devolve todas as regras
+            # violadas de uma vez, no idioma escolhido, em vez de recusar sem
+            # dizer o motivo.
+            problems = self.settings.check_password_strength(new_pass) if self.settings else []
+            if problems:
+                lang = self.resolve_language()
+                self.redirect_to_dashboard(
+                    "danger", " ".join(translate(key, lang) for key in problems)
+                )
                 return
             if self.settings and getattr(self.settings, "dashboard_auth_from_env", False):
                 self.redirect_to_dashboard(
@@ -531,8 +558,12 @@ class DashboardHandler(BaseHTTPRequestHandler):
             new_user = str(data.get("newUser") or "admin").strip()
             new_pass = str(data.get("newPassword") or "").strip()
 
-            if not new_pass or len(new_pass) < 4:
-                body = json.dumps({"success": False, "error": "Password must contain at least 4 characters."}).encode("utf-8")
+            # Mesma politica de forca do formulario da tela.
+            problems = self.settings.check_password_strength(new_pass) if self.settings else []
+            if problems:
+                lang = self.resolve_language()
+                detail = " ".join(translate(key, lang) for key in problems)
+                body = json.dumps({"success": False, "error": detail}).encode("utf-8")
                 self.send_response(HTTPStatus.BAD_REQUEST)
                 self.send_header("Content-Type", "application/json")
                 self.send_header("Content-Length", str(len(body)))
