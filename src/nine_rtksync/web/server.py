@@ -12,9 +12,14 @@ from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from typing import Any, Callable, Dict, Optional
 
+from urllib.parse import parse_qs, urlparse
+
 from ..config import Settings
+from ..i18n import DEFAULT_LANGUAGE, normalize_language
+from ..prefs import get_preference, resolve_prefs_path, set_preference
 from ..database import get_all_combos, get_all_connections
 from ..models import ConnectionRecord
+from .render import render_dashboard
 
 # Tempo de vida do resultado da sondagem ao gateway. O /healthz é chamado a cada
 # 15s pelo Docker; sem cache, cada chamada faria uma requisição HTTP de saída de
@@ -93,11 +98,12 @@ class DashboardHandler(BaseHTTPRequestHandler):
         if not self.require_auth():
             return
 
-        if self.path in ("/", "/index.html"):
-            self.serve_html()
-        elif self.path == "/api/status":
+        route = urlparse(self.path)
+        if route.path in ("/", "/index.html"):
+            self.serve_dashboard(query=parse_qs(route.query))
+        elif route.path == "/api/status":
             self.serve_api_status()
-        elif self.path == "/api/cron-status":
+        elif route.path == "/api/cron-status":
             self.serve_cron_status()
         else:
             self.send_error(HTTPStatus.NOT_FOUND, "Pagina nao encontrada")
@@ -109,16 +115,109 @@ class DashboardHandler(BaseHTTPRequestHandler):
         length = int(self.headers.get("Content-Length", 0))
         raw_body = self.rfile.read(length) if length > 0 else b"{}"
 
-        if self.path == "/api/sync":
+        route = urlparse(self.path).path
+
+        # Acoes do dashboard: executam e redirecionam de volta para a pagina
+        # renderizada (POST-Redirect-GET), sem JSON no navegador.
+        if route.startswith("/acoes/"):
+            self.handle_dashboard_action(route, raw_body)
+            return
+
+        if route == "/api/sync":
             self.handle_sync_request()
-        elif self.path == "/api/test-gateway":
+        elif route == "/api/test-gateway":
             self.handle_test_gateway()
-        elif self.path == "/api/change-password":
+        elif route == "/api/change-password":
             self.handle_change_password(raw_body)
-        elif self.path == "/api/cron-run":
+        elif route == "/api/cron-run":
             self.handle_cron_run()
         else:
             self.send_error(HTTPStatus.NOT_FOUND, "Endpoint nao encontrado")
+
+    def redirect_to_dashboard(self, tone: str, message: str) -> None:
+        """Redireciona para a pagina com uma mensagem de resultado."""
+        from urllib.parse import urlencode
+
+        query = urlencode({"aviso": message, "tom": tone})
+        self.send_response(HTTPStatus.SEE_OTHER)
+        self.send_header("Location", f"/?{query}")
+        self.send_header("Content-Length", "0")
+        self.end_headers()
+
+    def handle_dashboard_action(self, route: str, raw_body: bytes) -> None:
+        """Executa uma acao do painel e devolve o usuario para a pagina renderizada."""
+        if route == "/acoes/sincronizar":
+            if not self.sync_trigger_callback:
+                self.redirect_to_dashboard("warning", "Sincronizacao manual indisponivel nesta instancia.")
+                return
+            try:
+                res = self.sync_trigger_callback() or {}
+                self.redirect_to_dashboard(
+                    "success",
+                    f"Sincronizacao concluida: {res.get('total_connections', 0)} conexoes inspecionadas, "
+                    f"{res.get('normalized', 0)} normalizadas, {res.get('refreshed', 0)} renovadas.",
+                )
+            except Exception as e:
+                self.redirect_to_dashboard("danger", f"Falha na sincronizacao: {e}")
+            return
+
+        if route == "/acoes/cron":
+            if not self.cron_scheduler:
+                self.redirect_to_dashboard("warning", "Agendador nao esta ativo nesta instancia.")
+                return
+            try:
+                entry = self.cron_scheduler.trigger_now() or {}
+                self.redirect_to_dashboard(
+                    "success",
+                    f"Ciclo executado em {entry.get('durationMs', 0)}ms: "
+                    f"{entry.get('totalInspected', 0)} avaliadas, {entry.get('refreshedCount', 0)} renovadas.",
+                )
+            except Exception as e:
+                self.redirect_to_dashboard("danger", f"Falha ao executar o ciclo: {e}")
+            return
+
+        if route == "/acoes/testar-gateway":
+            # Invalida o cache para forcar uma sondagem real nesta acao explicita.
+            with _router_probe_lock:
+                _router_probe_cache.pop(self.router_url, None)
+            online = self.probe_router()
+            self.redirect_to_dashboard(
+                "success" if online else "danger",
+                "Gateway respondeu normalmente." if online else "Gateway nao respondeu.",
+            )
+            return
+
+        if route == "/acoes/idioma":
+            fields = parse_qs(raw_body.decode("utf-8", errors="replace"))
+            chosen = normalize_language((fields.get("lang", [""])[0] or "").strip())
+            set_preference(self.prefs_path(), "language", chosen)
+            self.send_response(HTTPStatus.SEE_OTHER)
+            self.send_header("Location", "/")
+            self.send_header("Content-Length", "0")
+            self.end_headers()
+            return
+
+        if route == "/acoes/credenciais":
+            fields = parse_qs(raw_body.decode("utf-8", errors="replace"))
+            new_user = (fields.get("user", [""])[0] or "").strip()
+            new_pass = (fields.get("password", [""])[0] or "").strip()
+
+            if len(new_pass) < 4:
+                self.redirect_to_dashboard("danger", "A senha deve conter ao menos 4 caracteres.")
+                return
+            if self.settings and getattr(self.settings, "dashboard_auth_from_env", False):
+                self.redirect_to_dashboard(
+                    "warning",
+                    "Credenciais definidas por variavel de ambiente. Altere-as no ambiente e reinicie.",
+                )
+                return
+            if self.settings and self.settings.update_auth_credentials(new_user, new_pass):
+                self.redirect_to_dashboard("success", "Credenciais atualizadas. Autentique-se novamente.")
+                return
+            self.redirect_to_dashboard("danger", "Nao foi possivel salvar as credenciais.")
+            return
+
+        self.send_error(HTTPStatus.NOT_FOUND, "Acao nao encontrada")
 
     def probe_router(self) -> bool:
         """Sonda o gateway com cache: o resultado vale por ROUTER_PROBE_TTL_SECONDS."""
@@ -172,16 +271,93 @@ class DashboardHandler(BaseHTTPRequestHandler):
         self.end_headers()
         self.write_body(payload)
 
-    def serve_html(self):
-        html_path = os.path.join(os.path.dirname(__file__), "index.html")
-        if os.path.exists(html_path):
-            with open(html_path, "rb") as f:
-                content = f.read()
-        else:
-            content = b"<h1>9RTKSync Dashboard</h1><p>index.html not found</p>"
+    def prefs_path(self) -> str:
+        """Banco de preferencias proprio do sincronizador (nunca o do gateway)."""
+        base = os.path.dirname(self.settings.get_auth_file_path()) if self.settings else ""
+        return resolve_prefs_path(base or os.path.expanduser("~"))
+
+    def resolve_language(self) -> str:
+        """Idioma em vigor: preferencia salva no SQLite, senao o padrao (ingles)."""
+        return normalize_language(get_preference(self.prefs_path(), "language", DEFAULT_LANGUAGE))
+
+    def collect_dashboard_state(self) -> Dict[str, Any]:
+        """Le tudo o que a pagina precisa. Roda no servidor: o SQLite nunca sai daqui."""
+        conns: list = []
+        combos: list = []
+        db_exists = bool(self.db_path and os.path.exists(self.db_path))
+        if db_exists:
+            try:
+                conns = get_all_connections(self.db_path)
+            except Exception:
+                conns = []
+            try:
+                combos = get_all_combos(self.db_path)
+            except Exception:
+                combos = []
+
+        start_t = time.time()
+        online = self.probe_router()
+        latency_ms = int((time.time() - start_t) * 1000)
+
+        return {
+            "connections": conns,
+            "combos": combos,
+            "cron": self.cron_scheduler.get_status() if self.cron_scheduler else {"active": False},
+            "gateway": {
+                "url": self.router_url,
+                "online": online,
+                "statusCode": 200 if online else 0,
+                "latencyMs": latency_ms,
+                "dbSummary": (
+                    f"Operacional ({len(conns)} conexoes, {len(combos)} combos)"
+                    if db_exists
+                    else "Banco nao encontrado"
+                ),
+            },
+        }
+
+    def serve_dashboard(self, query: Optional[Dict[str, list]] = None):
+        """Renderiza a pagina inteira no servidor, com os dados ja embutidos."""
+        query = query or {}
+        state = self.collect_dashboard_state()
+
+        flash = None
+        aviso = (query.get("aviso") or [""])[0]
+        if aviso:
+            flash = {"message": aviso, "tone": (query.get("tom") or ["info"])[0]}
+
+        current_user = "admin"
+        is_default = False
+        auth_from_env = False
+        refresh_margin = 900
+        if self.settings:
+            current_user, _ = self.settings.get_auth_credentials()
+            is_default = self.settings.is_default_password()
+            auth_from_env = getattr(self.settings, "dashboard_auth_from_env", False)
+            refresh_margin = self.settings.refresh_margin
+
+        content = render_dashboard(
+            connections=state["connections"],
+            combos=state["combos"],
+            cron=state["cron"],
+            gateway=state["gateway"],
+            db_path=self.db_path,
+            router_url=self.router_url,
+            current_user=current_user,
+            is_default_password=is_default,
+            refresh_margin=refresh_margin,
+            auth_from_env=auth_from_env,
+            flash=flash,
+            lang=self.resolve_language(),
+        ).encode("utf-8")
 
         self.send_response(HTTPStatus.OK)
         self.send_header("Content-Type", "text/html; charset=utf-8")
+        # A pagina carrega dados vivos: nunca pode vir do cache do navegador.
+        self.send_header("Cache-Control", "no-store, must-revalidate")
+        self.send_header("Referrer-Policy", "no-referrer")
+        self.send_header("X-Content-Type-Options", "nosniff")
+        self.send_header("X-Frame-Options", "DENY")
         self.send_header("Content-Length", str(len(content)))
         self.end_headers()
         self.write_body(content)
@@ -229,7 +405,6 @@ class DashboardHandler(BaseHTTPRequestHandler):
         body = json.dumps(payload, ensure_ascii=False, indent=2).encode("utf-8")
         self.send_response(HTTPStatus.OK)
         self.send_header("Content-Type", "application/json; charset=utf-8")
-        self.send_header("Access-Control-Allow-Origin", "*")
         self.send_header("Content-Length", str(len(body)))
         self.end_headers()
         self.write_body(body)

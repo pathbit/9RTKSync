@@ -46,6 +46,35 @@ class ConnectionRecord:
     def api_key(self) -> Optional[str]:
         return self.data.get("apiKey")
 
+    # Nomes de provedor que identificam uma instancia local / compativel com OpenAI.
+    LOCAL_PROVIDER_MARKERS = ("ollama", "vllm", "lmstudio", "llamacpp", "localai", "openai-compatible")
+
+    @property
+    def is_local(self) -> bool:
+        """Indica se a conexao aponta para uma instancia local (Ollama, vLLM, LM Studio...).
+
+        Uma instancia local costuma exigir uma chave de API de fachada, entao
+        checar apenas has_api_key a classificaria como provedor de nuvem.
+        """
+        provider = self.provider.lower()
+        if any(marker in provider for marker in self.LOCAL_PROVIDER_MARKERS):
+            return True
+        base_url = str(self.data.get("baseUrl") or "")
+        return any(host in base_url for host in ("localhost", "127.0.0.1", "0.0.0.0", "host.docker.internal"))
+
+    @property
+    def base_url(self) -> Optional[str]:
+        """URL base do provedor, quando declarada."""
+        return self.data.get("baseUrl") or self.data.get("baseURL") or None
+
+    @property
+    def local_models(self) -> list:
+        """Modelos descobertos na instancia local na ultima varredura."""
+        models = self.data.get("discoveredModels") or self.data.get("models") or []
+        if isinstance(models, str):
+            return [models]
+        return [str(m) for m in models if m]
+
     @property
     def expires_at_ms(self) -> Optional[int]:
         """Devolve a expiração normalizada em milissegundos epoch, se aplicável."""
@@ -88,6 +117,7 @@ class ConnectionRecord:
             if self.data.get("rateLimitedUntil"):
                 return "rate_limited"
             return "ativo"
-        if self.data.get("baseUrl") or "ollama" in self.provider.lower():
+        if self.is_local:
             return "ativo"
-        return "ativo" if self.data.get("testStatus") == "ok" else "desconhecido"
+        # O gateway usa "ok" e o OmniRoute usa "active"; ambos significam saudavel.
+        return "ativo" if self.data.get("testStatus") in ("ok", "active") else "desconhecido"

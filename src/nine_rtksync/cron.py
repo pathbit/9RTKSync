@@ -8,6 +8,30 @@ from typing import Any, Callable, Dict, List, Optional
 from .logs import get_logger
 
 
+def _extract_log_lines(res: Any) -> List[str]:
+    """Extrai as acoes registradas pelo motor de sincronizacao neste ciclo.
+
+    Guarda so o que explica o resultado — erro, renovacao, auto-cura. Um ciclo
+    sem nada a fazer devolve lista vazia, e a tela mostra isso como tal.
+    """
+    if not isinstance(res, dict):
+        return [f"Resultado inesperado do motor: {res!r}"]
+
+    lines: List[str] = []
+    if res.get("error"):
+        lines.append(f"ERRO: {res['error']}")
+
+    for detail in res.get("details", []) or []:
+        actions = detail.get("actions") or []
+        if not actions:
+            continue
+        label = f"{detail.get('provider', '?')} · {detail.get('name', '?')}"
+        for action in actions:
+            lines.append(f"{label}: {action}")
+
+    return lines
+
+
 class CronScheduler:
     """Agendador em background que gerencia a renovação contínua de contas OAuth e integridade de conexões."""
 
@@ -96,6 +120,7 @@ class CronScheduler:
             "refreshedCount": refreshed,
             "success": res.get("success", True) if isinstance(res, dict) else False,
             "error": res.get("error") if isinstance(res, dict) else None,
+            "log": _extract_log_lines(res),
         }
 
         with self._lock:
