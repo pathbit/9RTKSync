@@ -21,7 +21,13 @@ class LocalProvider(BaseProvider):
         return conn.is_local
 
     def discover_models(self, base_url: str, api_key: str = "") -> Tuple[List[str], str]:
-        """Query the local instance catalog. Returns (models, error)."""
+        """Query the local instance catalog.
+
+        Returns ``(models, error)``. An **empty error means the instance
+        answered**, even with an empty catalog: a freshly installed Ollama with
+        no model pulled is online, and reporting it as unreachable would light
+        up the panel for a service that is working.
+        """
         if not base_url:
             return [], "baseUrl not declared on the connection"
 
@@ -29,6 +35,7 @@ class LocalProvider(BaseProvider):
         # An OpenAI-shaped baseUrl already ends in /v1; the root serves /api/tags.
         origin = root[: -len("/v1")] if root.endswith("/v1") else root
         last_error = ""
+        answered = False
 
         for path in MODEL_CATALOG_PATHS:
             target = f"{origin}{path}" if path.startswith("/api") else f"{root}{path}"
@@ -50,10 +57,15 @@ class LocalProvider(BaseProvider):
                 last_error = str(e)
                 continue
 
+            # Chegar aqui significa resposta HTTP valida e JSON parseavel: o
+            # servico esta de pe, tendo modelo ou nao.
+            answered = True
             models = self._extract_model_names(payload)
             if models:
                 return models, ""
 
+        if answered:
+            return [], ""
         return [], last_error or "no model returned by the local instance"
 
     @staticmethod
@@ -90,11 +102,18 @@ class LocalProvider(BaseProvider):
         models, probe_error = self.discover_models(conn.base_url or "", conn.api_key or "")
         now_iso = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
 
-        if models:
-            if data.get("discoveredModels") != models:
+        # Erro vazio significa que a instancia respondeu -- com catalogo cheio ou
+        # vazio. Uma instalacao recem-feita, sem modelo baixado, esta no ar.
+        if models or not probe_error:
+            if models and data.get("discoveredModels") != models:
                 data["discoveredModels"] = models
                 modified = True
-            messages.append(f"Local instance answered with {len(models)} model(s): {', '.join(models[:5])}")
+            if models:
+                messages.append(
+                    f"Local instance answered with {len(models)} model(s): {', '.join(models[:5])}"
+                )
+            else:
+                messages.append("Local instance answered with an empty model catalog")
 
             if data.get("testStatus") != "active":
                 data["testStatus"] = "active"
@@ -111,5 +130,8 @@ class LocalProvider(BaseProvider):
                 data["lastTested"] = now_iso
                 modified = True
 
-        return modified, data if modified else None, messages
+        # Uma sondagem local nunca renova credencial: ela descobre catalogo e
+        # estado. O primeiro elemento e a contagem de renovacao do ciclo, entao
+        # aqui e sempre False; o dado segue para ser gravado assim mesmo.
+        return False, data if modified else None, messages
 

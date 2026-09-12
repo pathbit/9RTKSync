@@ -12,7 +12,6 @@ from nine_rtksync.models import ConnectionRecord
 from nine_rtksync.providers.api_keys import ApiKeyProvider
 from nine_rtksync.providers.google import GoogleProvider
 from nine_rtksync.providers.local import LocalProvider
-from nine_rtksync.providers.oauth import GenericOAuthProvider
 
 
 class TestDiscoveryEngine(unittest.TestCase):
@@ -127,11 +126,15 @@ class TestDiscoveryEngine(unittest.TestCase):
         )
         self.assertTrue(lp.can_handle(conn_ollama))
 
+        # O primeiro elemento conta renovacao de credencial; uma sondagem local
+        # nunca renova nada, entao e sempre False. O que prova que funcionou e o
+        # dicionario devolvido para gravacao.
         with mock.patch.object(
             LocalProvider, "discover_models", return_value=(["llama3.2:3b", "qwen2.5:7b"], "")
         ):
-            mod, data, msgs = lp.check_and_refresh(conn_ollama)
-        self.assertTrue(mod)
+            renewed, data, msgs = lp.check_and_refresh(conn_ollama)
+        self.assertFalse(renewed, "sondagem local nao pode contar como renovacao no ciclo")
+        self.assertIsNotNone(data)
         self.assertEqual(data["testStatus"], "active")
         self.assertEqual(data["discoveredModels"], ["llama3.2:3b", "qwen2.5:7b"])
 
@@ -139,8 +142,9 @@ class TestDiscoveryEngine(unittest.TestCase):
         with mock.patch.object(
             LocalProvider, "discover_models", return_value=([], "Connection refused")
         ):
-            mod, data, msgs = lp.check_and_refresh(conn_ollama)
-        self.assertTrue(mod)
+            renewed, data, msgs = lp.check_and_refresh(conn_ollama)
+        self.assertFalse(renewed)
+        self.assertIsNotNone(data)
         self.assertEqual(data["testStatus"], "unreachable")
 
 

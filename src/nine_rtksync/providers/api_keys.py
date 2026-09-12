@@ -38,14 +38,24 @@ class ApiKeyProvider(BaseProvider):
         self.opener = opener
 
     def can_handle(self, conn: ConnectionRecord) -> bool:
-        return conn.has_api_key
+        # Uma instancia local carrega uma chave de fachada, entao `has_api_key`
+        # sozinho tambem casaria com ela. Como este provider vem antes do
+        # LocalProvider na lista, o laco daria break aqui e o catalogo local
+        # nunca seria descoberto -- e por isso que o Ollama local aparecia sem
+        # modelo nenhum no painel.
+        return conn.has_api_key and not conn.is_local
 
     def check_and_refresh(
         self, conn: ConnectionRecord, margin_seconds: int = 900, **kwargs
     ) -> Tuple[bool, Optional[Dict[str, Any]], List[str]]:
         messages: List[str] = []
         data = dict(conn.data)
+        # `modified` decide se vale gravar no banco; `renewed` decide se conta
+        # como renovacao no resumo do ciclo. Sao coisas diferentes: carimbar o
+        # horario de uma verificacao muda a linha, mas nao renovou credencial
+        # nenhuma -- e contar isso inflava o "N renovadas" do cron.
         modified = False
+        renewed = False
 
         # 1. Check if newer API key was discovered on host
         if self.discovery:
@@ -53,6 +63,7 @@ class ApiKeyProvider(BaseProvider):
             if local and local.get("apiKey") and local.get("apiKey") != data.get("apiKey"):
                 data["apiKey"] = local["apiKey"]
                 modified = True
+                renewed = True
                 src = local.get("source_path", "host")
                 messages.append(f"API key synchronized from host local credential ({src})")
 
@@ -71,7 +82,11 @@ class ApiKeyProvider(BaseProvider):
         if self.validate_credentials:
             result = check_api_key(
                 conn.provider,
-                conn.api_key or "",
+                # `data` ja pode conter a chave recem-descoberta no passo 1;
+                # usar `conn.api_key` mandaria a chave velha ao provedor e
+                # gravaria "invalida" justamente quando ela acabou de ser
+                # consertada.
+                str(data.get("apiKey") or conn.api_key or ""),
                 base_url=conn.base_url,
                 timeout=self.validation_timeout,
                 opener=self.opener,
@@ -97,5 +112,5 @@ class ApiKeyProvider(BaseProvider):
         if not messages:
             messages.append("API key unchanged")
 
-        return modified, data if modified else None, messages
+        return renewed, data if modified else None, messages
 

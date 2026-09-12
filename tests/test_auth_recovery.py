@@ -4,10 +4,9 @@ import json
 import os
 import stat
 import tempfile
-import pathlib
+import logging
 import unittest
 
-from nine_rtksync.cli import *  # noqa
 from nine_rtksync import cli as nine_rtksync_cli
 from unittest import mock
 
@@ -199,13 +198,76 @@ if __name__ == "__main__":
     unittest.main()
 
 
-class TestRecoveryHashIsNeverLogged(unittest.TestCase):
-    """O stdout do container e coletado e encaminhado: credencial funcional nao vai para la."""
+class ColetorDeLog(logging.Handler):
+    """Guarda a mensagem ja formatada de cada registro emitido."""
 
-    def test_the_startup_log_does_not_print_the_hash(self):
-        source = pathlib.Path(nine_rtksync_cli.__file__).read_text(encoding="utf-8")
-        block = source[source.index("ensure_recovery_hash()"):]
-        block = block[: block.index("if args.db_path")]
-        # A chamada de log pode citar o caminho do arquivo, nunca o valor.
-        self.assertNotIn("recovery_hash,", block.split("logger.warning")[1])
-        self.assertIn("get_recovery_file_path()", block)
+    def __init__(self):
+        super().__init__()
+        self.mensagens = []
+
+    def emit(self, record):
+        self.mensagens.append(record.getMessage())
+
+
+class TestRecoveryHashIsNeverLogged(unittest.TestCase):
+    """O stdout do container e coletado e encaminhado: credencial funcional nao vai para la.
+
+    A verificacao e de comportamento, nao de texto do codigo-fonte: o que importa
+    e o que sai no log quando a credencial e gerada de verdade.
+    """
+
+    def test_the_startup_log_names_the_file_and_never_the_value(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            arquivo = os.path.join(tmp, ".dashboard_recovery")
+            valor, gerado = ensure_recovery_hash(arquivo)
+            self.assertTrue(gerado)
+            self.assertTrue(valor)
+
+            coletor = ColetorDeLog()
+            logger = logging.getLogger("teste.recuperacao")
+            logger.addHandler(coletor)
+            logger.setLevel(logging.INFO)
+            self.addCleanup(logger.removeHandler, coletor)
+
+            # Reproduz exatamente a chamada que o CLI faz ao gerar a credencial.
+            logger.warning(
+                "[AUTH] Recovery credential generated for user 'admin'. Read it with: "
+                "docker exec <container> cat %s  (or pin your own with DASHBOARD_RECOVERY_HASH)",
+                arquivo,
+            )
+
+            saida = "\n".join(coletor.mensagens)
+            self.assertNotIn(valor, saida, "o valor da credencial nunca pode aparecer no log")
+            self.assertIn(arquivo, saida, "o log precisa dizer onde ler o valor")
+
+    def test_the_cli_passes_the_path_and_not_the_hash(self):
+        """Guarda contra alguem trocar o argumento do log pelo proprio valor."""
+        chamadas = []
+
+        class LoggerFalso:
+            def warning(self, *args, **kwargs):
+                chamadas.append(args)
+
+            def info(self, *args, **kwargs):
+                pass
+
+            def error(self, *args, **kwargs):
+                pass
+
+        with tempfile.TemporaryDirectory() as tmp:
+            db = os.path.join(tmp, "data.sqlite")
+            open(db, "wb").close()
+            argv = ["9rtksync", "--status", "--db-path", db]
+            with mock.patch("sys.argv", argv), \
+                 mock.patch.object(nine_rtksync_cli, "setup_logging", return_value=LoggerFalso()), \
+                 mock.patch.object(nine_rtksync_cli, "print_status_table", lambda settings: None):
+                nine_rtksync_cli.main()
+
+        for args in chamadas:
+            for argumento in args[1:]:
+                # 64 hex e a forma do hash de recuperacao.
+                texto = str(argumento)
+                self.assertFalse(
+                    len(texto) == 64 and all(c in "0123456789abcdef" for c in texto),
+                    f"o CLI passou um valor com forma de credencial para o log: {texto[:8]}...",
+                )

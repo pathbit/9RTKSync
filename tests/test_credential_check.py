@@ -7,7 +7,6 @@ que dependia de um servico real que derrubou a CI antes.
 import json
 import unittest
 import urllib.error
-from typing import Optional
 
 from nine_rtksync import credential_check as cc
 from nine_rtksync.models import ConnectionRecord

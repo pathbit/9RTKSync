@@ -39,7 +39,9 @@ def print_status_table(settings: Settings):
             else:
                 val_str = f"{rem // 60} min ({rem}s)"
         else:
-            val_str = "Unlimited"
+            # Chave de API nao carrega validade; dizer "ilimitada" seria
+            # uma afirmacao que nada no dado sustenta.
+            val_str = "Not applicable"
 
         status_icon = "[ok]" if c.health_status in ("active", "no_expiration") else ("[!]" if c.health_status == "expirando_em_breve" or c.health_status == "expiring_soon" else "[ERROR]")
         print(f"  {c.provider:<16} {c.name[:25]:<26} {tipo:<10} {status_icon} {c.health_status:<7} {val_str:<14}")
@@ -108,13 +110,28 @@ def main():
     parser.add_argument(
         "--password",
         type=str,
-        help="Password for web dashboard authentication (default: pathbit)",
+        help="Password for the web dashboard (no factory default; set it on the screen)",
     )
 
     args = parser.parse_args()
     settings = Settings.from_env()
 
-    # The file log must exist before any event from the sync engine.
+    # As opcoes de linha de comando sao aplicadas ANTES de qualquer estado
+    # persistente ser resolvido. Com --db-path apontando para outro lugar, o log
+    # e a credencial de recuperacao nasciam ao lado do banco antigo, e a
+    # autenticacao depois procurava o arquivo ao lado do banco novo: a
+    # credencial de emergencia gerada e anunciada nunca abria o painel.
+    if args.db_path:
+        settings.db_path = args.db_path
+    if args.interval:
+        settings.sync_interval = args.interval
+        # O agendador le cron_interval, que ja foi derivado do ambiente antes de
+        # as opcoes chegarem aqui. Sem esta linha, --interval 60 aparecia no
+        # banner de inicializacao e o cron seguia no intervalo antigo.
+        settings.cron_interval = args.interval
+    if args.port:
+        settings.web_port = args.port
+
     logger = setup_logging(settings.db_path)
 
     # Break-glass credential: generated once so the operator can get back into the
@@ -131,16 +148,10 @@ def main():
             settings.get_recovery_file_path(),
         )
 
-    if args.db_path:
-        settings.db_path = args.db_path
-    if args.interval:
-        settings.sync_interval = args.interval
     if args.margin:
         settings.refresh_margin = args.margin
     if args.no_web:
         settings.enable_web = False
-    if args.port:
-        settings.web_port = args.port
     if args.user:
         settings.dashboard_user = args.user
     if args.password:

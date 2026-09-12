@@ -262,11 +262,11 @@ class DashboardHandler(BaseHTTPRequestHandler):
             return
 
         if route == "/acoes/sincronizar":
-            if not self.sync_trigger_callback:
+            if not type(self).sync_trigger_callback:
                 self.redirect_to_dashboard("warning", "Sincronizacao manual indisponivel nesta instancia.")
                 return
             try:
-                res = self.sync_trigger_callback() or {}
+                res = type(self).sync_trigger_callback() or {}
                 # A sincronizacao muda o estado do gateway: o cache anterior
                 # deixaria a tela mostrando o mundo de antes da acao.
                 self.invalidate_caches()
@@ -457,6 +457,11 @@ class DashboardHandler(BaseHTTPRequestHandler):
                 "online": online,
                 "statusCode": 200 if online else 0,
                 "latencyMs": latency_ms,
+                # Bandeira explicita: o resumo e texto para humano e vinha
+                # sempre preenchido, inclusive com "Banco nao encontrado".
+                # Converter esse texto em booleano fazia a tela declarar banco e
+                # gateway 100% operacionais justamente quando o arquivo sumia.
+                "dbOk": db_exists,
                 "dbSummary": (
                     f"Operacional ({len(conns)} conexoes, {len(combos)} combos)"
                     if db_exists
