@@ -88,4 +88,6 @@ class ConnectionRecord:
             if self.data.get("rateLimitedUntil"):
                 return "rate_limited"
             return "ativo"
-        return "desconhecido"
+        if self.data.get("baseUrl") or "ollama" in self.provider.lower():
+            return "ativo"
+        return "ativo" if self.data.get("testStatus") == "ok" else "desconhecido"

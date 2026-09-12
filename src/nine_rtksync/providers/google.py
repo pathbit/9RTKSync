@@ -16,14 +16,19 @@ class GoogleProvider(BaseProvider):
 
     OAUTH_TOKEN_URL = "https://oauth2.googleapis.com/token"
 
-    def __init__(self, credential_paths: Optional[List[str]] = None):
+    def __init__(self, credential_paths: Optional[List[str]] = None, discovery: Optional[Any] = None):
         self.credential_paths = credential_paths or []
+        self.discovery = discovery
 
     def can_handle(self, conn: ConnectionRecord) -> bool:
         return conn.provider in ("antigravity", "gemini-cli")
 
     def find_local_credential_file(self) -> Optional[str]:
         """Localiza arquivo de token montado do host."""
+        if self.discovery:
+            disc = self.discovery.discover_google()
+            if disc and disc.get("source_path"):
+                return disc["source_path"]
         for p in self.credential_paths:
             if p and os.path.exists(p) and os.path.isfile(p):
                 return p
@@ -31,12 +36,25 @@ class GoogleProvider(BaseProvider):
 
     def read_local_credential(self) -> Optional[Dict[str, Any]]:
         """Lê o arquivo de token local se presente."""
+        if self.discovery:
+            disc = self.discovery.discover_google()
+            if disc and disc.get("accessToken"):
+                return {
+                    "access_token": disc.get("accessToken"),
+                    "refresh_token": disc.get("refreshToken"),
+                    "client_id": disc.get("clientId"),
+                    "client_secret": disc.get("clientSecret"),
+                    "expiry": disc.get("expiry"),
+                }
         path = self.find_local_credential_file()
         if not path:
             return None
         try:
             with open(path, "r", encoding="utf-8") as f:
                 data = json.load(f)
+            tok = data.get("access_token") or data.get("accessToken") or data.get("token")
+            if tok and "access_token" not in data:
+                data["access_token"] = tok
             return data if isinstance(data, dict) else None
         except Exception:
             return None

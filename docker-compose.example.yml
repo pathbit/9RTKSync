@@ -28,8 +28,9 @@ services:
       - "127.0.0.1:9190:9190"
     volumes:
       - 9router_data:/app/data
-      - ${HOME}/.gemini:/root/.gemini:ro
+      - ${HOME}:/root/host:ro
     environment:
+      - HOST_HOME=/root/host
       - DB_PATH=/app/data/db/data.sqlite
       - SYNC_INTERVAL=300
       - REFRESH_MARGIN=900

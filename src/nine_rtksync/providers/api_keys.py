@@ -18,7 +18,11 @@ class ApiKeyProvider(BaseProvider):
         "mistral": "https://api.mistral.ai/v1/models",
         "openrouter": "https://openrouter.ai/api/v1/models",
         "gemini": "https://generativelanguage.googleapis.com/v1beta/models",
+        "openai": "https://api.openai.com/v1/models",
     }
+
+    def __init__(self, discovery: Optional[Any] = None):
+        self.discovery = discovery
 
     def can_handle(self, conn: ConnectionRecord) -> bool:
         return conn.has_api_key
@@ -30,17 +34,28 @@ class ApiKeyProvider(BaseProvider):
         data = dict(conn.data)
         modified = False
 
-        # 1. Verifica se havia rate limit temporário
-        if data.get("rateLimitedUntil"):
-            messages.append("Conexão estava sob rate limit; trava limpa pelo normalizador")
-            modified = True
+        # 1. Verifica se há chave de API mais recente descoberta no host
+        if self.discovery:
+            local = self.discovery.get_credential_for_provider(conn.provider)
+            if local and local.get("apiKey") and local.get("apiKey") != data.get("apiKey"):
+                data["apiKey"] = local["apiKey"]
+                modified = True
+                src = local.get("source_path", "host")
+                messages.append(f"Chave de API sincronizada a partir de credencial local do host ({src})")
 
-        # 2. Atualiza carimbo de integridade se necessário
-        if not data.get("testStatus") or data.get("testStatus") == "unknown":
+        # 2. Desbloqueio e limpeza de rate limit
+        if data.get("rateLimitedUntil"):
+            del data["rateLimitedUntil"]
+            data["backoffLevel"] = 0
+            modified = True
+            messages.append("Trava de rateLimitedUntil removida proativamente")
+
+        # 3. Atualiza carimbo de integridade se necessário
+        if not data.get("testStatus") or data.get("testStatus") != "ok":
             data["testStatus"] = "ok"
             data["lastTested"] = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
             modified = True
-            messages.append("Status de conexão inicializado como ativo (ok)")
+            messages.append("Status de conexão marcado como operacional (ok)")
 
         if not messages:
             messages.append("Chave de API ativa e sem pendências")

@@ -21,6 +21,9 @@ class GenericOAuthProvider(BaseProvider):
         "kimi": "https://api.moonshot.cn/v1/oauth/token",
     }
 
+    def __init__(self, discovery: Optional[Any] = None):
+        self.discovery = discovery
+
     def can_handle(self, conn: ConnectionRecord) -> bool:
         return conn.is_oauth and conn.provider not in ("antigravity", "gemini-cli")
 
@@ -29,6 +32,21 @@ class GenericOAuthProvider(BaseProvider):
     ) -> Tuple[bool, Optional[Dict[str, Any]], List[str]]:
         messages: List[str] = []
         data = dict(conn.data)
+        now_ms = int(time.time() * 1000)
+
+        # 1. Verifica se há credencial correspondente descoberta no host
+        if self.discovery:
+            local = self.discovery.get_credential_for_provider(conn.provider)
+            if local and local.get("accessToken") and local.get("accessToken") != data.get("accessToken"):
+                data["accessToken"] = local["accessToken"]
+                if local.get("refreshToken"):
+                    data["refreshToken"] = local["refreshToken"]
+                data["expiresAt"] = now_ms + (3599 * 1000)
+                data["testStatus"] = "ok"
+                src = local.get("source_path", "host")
+                messages.append(f"Token sincronizado a partir de credencial local do host ({src})")
+                return True, data, messages
+
         rem = conn.remaining_seconds
 
         if rem is None:

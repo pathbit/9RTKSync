@@ -17,6 +17,7 @@ class Settings:
     sync_interval: int = 300
     refresh_margin: int = 900
     enable_web: bool = True
+    host_home: str = ""
     web_host: str = "0.0.0.0"
     web_port: int = 9190
     router_url: str = "http://127.0.0.1:20128"
@@ -25,12 +26,21 @@ class Settings:
 
     @classmethod
     def from_env(cls) -> "Settings":
-        home = os.path.expanduser("~")
+        host_home = os.environ.get("HOST_HOME", "")
+        if not host_home:
+            if os.path.exists("/root/host") and os.path.isdir("/root/host"):
+                host_home = "/root/host"
+            elif os.path.exists("/host") and os.path.isdir("/host"):
+                host_home = "/host"
+            else:
+                host_home = os.path.expanduser("~")
+
         default_paths = [
             os.environ.get("ANTIGRAVITY_TOKEN_PATH", ""),
+            os.path.join(host_home, ".gemini", "oauth_creds.json"),
+            os.path.join(host_home, ".gemini", "jetski-standalone-oauth-token"),
+            os.path.join(host_home, ".config", "antigravity", "jetski-standalone-oauth-token"),
             "/root/.gemini/jetski-standalone-oauth-token",
-            os.path.join(home, ".gemini", "jetski-standalone-oauth-token"),
-            os.path.join(home, ".config", "antigravity", "jetski-standalone-oauth-token"),
         ]
         valid_paths = [p for p in default_paths if p]
 
@@ -41,10 +51,10 @@ class Settings:
                 "/app/data/db/data.sqlite",
                 "/app/data/data.sqlite",
                 "/app/data/storage.sqlite",
-                os.path.join(home, ".9router", "data", "db", "data.sqlite"),
-                os.path.join(home, ".9router", "data.sqlite"),
-                os.path.join(home, ".omniroute", "data", "storage.sqlite"),
-                os.path.join(home, ".omniroute", "storage.sqlite"),
+                os.path.join(host_home, ".9router", "data", "db", "data.sqlite"),
+                os.path.join(host_home, ".9router", "data.sqlite"),
+                os.path.join(host_home, ".omniroute", "data", "storage.sqlite"),
+                os.path.join(host_home, ".omniroute", "storage.sqlite"),
             ]
             for candidate in candidate_dbs:
                 if os.path.exists(candidate):
@@ -55,6 +65,7 @@ class Settings:
 
         return cls(
             db_path=db_path,
+            host_home=host_home,
             sync_interval=int(os.environ.get("SYNC_INTERVAL", "300")),
             refresh_margin=int(os.environ.get("REFRESH_MARGIN", "900")),
             enable_web=os.environ.get("ENABLE_WEB_DASHBOARD", "1") not in ("0", "false", "no"),

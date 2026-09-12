@@ -10,9 +10,10 @@ from typing import Any, Dict, List
 from .combos import sync_combos
 from .config import Settings
 from .database import get_all_connections, update_connection_data
+from .discovery import HostDiscoveryEngine
 from .models import ConnectionRecord
 from .normalizer import normalize_connection_data
-from .providers import ApiKeyProvider, BaseProvider, GenericOAuthProvider, GoogleProvider
+from .providers import ApiKeyProvider, BaseProvider, GenericOAuthProvider, GoogleProvider, LocalProvider
 from .web.server import start_web_server
 
 
@@ -26,10 +27,15 @@ class SyncEngine:
 
     def __init__(self, settings: Settings):
         self.settings = settings
+        self.discovery = HostDiscoveryEngine(
+            host_home=settings.host_home,
+            extra_paths=settings.credential_paths,
+        )
         self.providers: List[BaseProvider] = [
-            GoogleProvider(credential_paths=settings.credential_paths),
-            GenericOAuthProvider(),
-            ApiKeyProvider(),
+            GoogleProvider(credential_paths=settings.credential_paths, discovery=self.discovery),
+            GenericOAuthProvider(discovery=self.discovery),
+            ApiKeyProvider(discovery=self.discovery),
+            LocalProvider(),
         ]
 
     def sync_all(self) -> Dict[str, Any]:
@@ -129,8 +135,19 @@ def run_daemon(settings: Settings):
     print("⚡ 9RTKSYNC · 9ROUTER UNIVERSAL TOKEN & CONNECTION SYNCHRONIZER", flush=True)
     print(f"   Banco SQLite: {settings.db_path}", flush=True)
     print(f"   Gateway URL:  {settings.router_url}", flush=True)
+    print(f"   Host Home:    {engine.discovery.host_home}", flush=True)
     print(f"   Intervalo: {settings.sync_interval}s · Margem de Renovação: {settings.refresh_margin}s", flush=True)
     print("=" * 70, flush=True)
+
+    # Varredura inicial de credenciais disponíveis no host
+    discovered = engine.discovery.discover_all()
+    found_any = False
+    for prov, info in discovered.items():
+        if info:
+            found_any = True
+            log_msg("DISCOVERY", f"Credencial detectada no host: [{prov}] -> {info.get('source_path')}")
+    if not found_any:
+        log_msg("DISCOVERY", f"Nenhuma credencial local pré-existente em {engine.discovery.host_home}")
 
     # Inicia servidor web embutido se habilitado
     if settings.enable_web:
