@@ -22,7 +22,7 @@ services:
 
   9rtksync:
     image: ghcr.io/pathbit/9rtksync:latest
-    container_name: 9RTKSync
+    container_name: router-sync
     restart: unless-stopped
     ports:
       - "127.0.0.1:9190:9190"
@@ -32,10 +32,12 @@ services:
     environment:
       - HOST_HOME=/root/host
       - DB_PATH=/app/data/db/data.sqlite
-      - SYNC_INTERVAL=300
-      - REFRESH_MARGIN=900
-      - ENABLE_WEB_DASHBOARD=1
-      - WEB_PORT=9190
+      - SYNC_INTERVAL=${SYNC_INTERVAL:-300}
+      - REFRESH_MARGIN=${REFRESH_MARGIN:-900}
+      - ENABLE_WEB_DASHBOARD=${ENABLE_WEB_DASHBOARD:-1}
+      - WEB_PORT=${WEB_PORT:-9190}
+      - DASHBOARD_USER=${DASHBOARD_USER:-admin}
+      - DASHBOARD_PASSWORD=${DASHBOARD_PASSWORD:-pathbit}
     depends_on:
       - 9router
 
