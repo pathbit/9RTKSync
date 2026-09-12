@@ -88,4 +88,14 @@ def normalize_connection_data(raw_data: Dict[str, Any]) -> Tuple[bool, Dict[str,
             modified = True
             notes.append("Trava de rateLimitedUntil no passado foi removida com sucesso")
 
+    # 3. Limpeza de travas de modelos (modelLock_*) expiradas
+    for k in list(data.keys()):
+        if k.startswith("modelLock_"):
+            lock_val = data[k]
+            lock_ms = parse_iso_or_str_to_ms(lock_val)
+            if lock_ms and lock_ms < now_ms:
+                del data[k]
+                modified = True
+                notes.append(f"Trava de modelo temporária {k} expirada e removida")
+
     return modified, data, notes

@@ -8,6 +8,7 @@ import urllib.request
 from typing import Any, Dict, List, Optional, Tuple
 
 from ..models import ConnectionRecord
+from ..normalizer import parse_iso_or_str_to_ms
 from .base import BaseProvider
 
 
@@ -73,9 +74,12 @@ class GoogleProvider(BaseProvider):
             client_secret = local.get("client_secret") or local.get("clientSecret") or client_secret
 
         # Fallback: descobrir nos arquivos de provedores do 9Router se estiver rodando no mesmo container/volume
+        data_dir = os.environ.get("DATA_DIR", "/app/data")
         candidate_files = [
-            "/app/open-sse/providers/registry/antigravity.js",
+            os.path.join(data_dir, "shared.js"),
             "/app/data/shared.js",
+            "/app/open-sse/providers/shared.js",
+            "/app/open-sse/providers/registry/antigravity.js",
         ]
         for fpath in candidate_files:
             if os.path.exists(fpath):
@@ -89,15 +93,19 @@ class GoogleProvider(BaseProvider):
                         client_id = m_id.group(1)
                     if m_sec and not client_secret:
                         client_secret = m_sec.group(1)
+                    if client_id and client_secret:
+                        break
                 except Exception:
                     pass
 
-        return client_id, client_secret
+        return client_id or "", client_secret or ""
 
     def refresh_oauth_token(
         self, refresh_token: str, client_id: str, client_secret: str
     ) -> Tuple[bool, Optional[Dict[str, Any]], str]:
         """Dispara requisição HTTPS padrão para oauth2.googleapis.com."""
+        if not client_id or not client_secret:
+            return False, None, "client_id ou client_secret não configurado no ambiente nem encontrado em shared.js"
         payload = urllib.parse.urlencode({
             "grant_type": "refresh_token",
             "refresh_token": refresh_token,
@@ -130,23 +138,36 @@ class GoogleProvider(BaseProvider):
     ) -> Tuple[bool, Optional[Dict[str, Any]], List[str]]:
         messages: List[str] = []
         data = dict(conn.data)
+        now_ms = int(time.time() * 1000)
 
-        # 1. Verifica se há token local mais novo no host
+        # 1. Se há credencial local no host
         local = self.read_local_credential()
-        if local and local.get("access_token") and local.get("access_token") != data.get("accessToken"):
-            data["accessToken"] = local["access_token"]
-            if local.get("refresh_token"):
-                data["refreshToken"] = local["refresh_token"]
-            # Recalcula validade
-            now_ms = int(time.time() * 1000)
-            data["expiresAt"] = now_ms + (3599 * 1000)
-            data["testStatus"] = "ok"
-            messages.append("Token atualizado a partir de arquivo de credencial local do host")
-            return True, data, messages
+        needs_refresh = False
+
+        if local:
+            local_ref = local.get("refresh_token") or local.get("refreshToken")
+            if local_ref and data.get("refreshToken") != local_ref:
+                data["refreshToken"] = local_ref
+                needs_refresh = True
+                messages.append("RefreshToken atualizado a partir do host")
+
+            local_tok = local.get("access_token") or local.get("accessToken")
+            local_exp_ms = parse_iso_or_str_to_ms(local.get("expiry"))
+            local_is_valid = (local_exp_ms is None or local_exp_ms > (now_ms + margin_seconds))
+
+            if local_tok and local_tok != data.get("accessToken") and local_is_valid and not data.get("rateLimitedUntil") and not data.get("errorCode"):
+                data["accessToken"] = local_tok
+                data["expiresAt"] = local_exp_ms or (now_ms + (3599 * 1000))
+                data["testStatus"] = "ok"
+                messages.append("Token atualizado a partir de arquivo de credencial local do host")
+                return True, data, messages
 
         # 2. Avalia necessidade de renovação
         rem = conn.remaining_seconds
-        needs_refresh = False
+
+        if data.get("errorCode") in (401, 403) or data.get("lastError") or data.get("rateLimitedUntil") or any(k.startswith("modelLock_") for k in data):
+            needs_refresh = True
+            messages.append("Conexão com pendência de erro ou trava de modelo no gateway; acionando renovação OAuth")
 
         if rem is None:
             needs_refresh = True
@@ -162,7 +183,7 @@ class GoogleProvider(BaseProvider):
         # 3. Executa a renovação OAuth
         refresh_token = data.get("refreshToken")
         if not refresh_token and local:
-            refresh_token = local.get("refresh_token")
+            refresh_token = local.get("refresh_token") or local.get("refreshToken")
 
         if not refresh_token:
             messages.append("refreshToken não disponível para renovação automática")
@@ -178,7 +199,6 @@ class GoogleProvider(BaseProvider):
             messages.append(f"Falha na renovação OAuth: {err}")
             return False, None, messages
 
-        now_ms = int(time.time() * 1000)
         expires_in = int(resp.get("expires_in", 3599))
         data["accessToken"] = resp["access_token"]
         if resp.get("refresh_token"):
@@ -186,6 +206,19 @@ class GoogleProvider(BaseProvider):
         data["expiresAt"] = now_ms + (expires_in * 1000)
         data["testStatus"] = "ok"
         data["backoffLevel"] = 0
-        messages.append(f"Access token renovado com sucesso (validade: {expires_in}s)")
 
+        # Limpa todas as travas e erros residuais
+        for k in list(data.keys()):
+            if k.startswith("modelLock_"):
+                del data[k]
+        if "rateLimitedUntil" in data:
+            del data["rateLimitedUntil"]
+        if "errorCode" in data:
+            del data["errorCode"]
+        if "lastError" in data:
+            del data["lastError"]
+        if "lastErrorAt" in data:
+            del data["lastErrorAt"]
+
+        messages.append(f"Access token renovado com sucesso via Google OAuth ({expires_in}s)")
         return True, data, messages
