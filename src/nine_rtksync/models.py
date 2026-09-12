@@ -170,6 +170,22 @@ class ConnectionRecord:
         return str(state) if state else None
 
     @property
+    def rate_limit_active(self) -> bool:
+        """Whether the rate-limit hold is still in force right now.
+
+        `rateLimitedUntil` guarda o instante em que a janela do provedor se
+        reabre -- é um prazo, não uma bandeira. Tratar a mera presença do campo
+        como "limitada" deixava a conexão amarela para sempre depois do primeiro
+        429, já que nada apaga a marca quando o prazo vence.
+        """
+        from .normalizer import parse_iso_or_str_to_ms
+
+        until = parse_iso_or_str_to_ms(self.data.get("rateLimitedUntil"))
+        if until is None:
+            return False
+        return until > int(time.time() * 1000)
+
+    @property
     def health_status(self) -> str:
         """Semantic classification of connection health.
 
@@ -184,7 +200,12 @@ class ConnectionRecord:
 
         if self.is_local:
             # A local instance is only healthy when its model catalog answered.
-            return "unknown" if self.data.get("testStatus") == "unreachable" else "active"
+            estado = self.data.get("testStatus")
+            if estado == "unreachable":
+                return "unknown"
+            # Conexao recem-criada nunca foi sondada, e com CRON_ENABLED=0 pode
+            # nunca ser: dizer "ativa" e alegar uma saude que ninguem verificou.
+            return "active" if estado in ("active", "ok", "success") else "not_checked"
 
         if self.is_oauth:
             rem = self.remaining_seconds
@@ -197,7 +218,7 @@ class ConnectionRecord:
             return "active"
 
         if self.has_api_key:
-            if self.data.get("rateLimitedUntil"):
+            if self.rate_limit_active:
                 return "rate_limited"
             # Never probed yet: say so instead of claiming health nobody verified.
             return "active" if probed == "valid" else "not_checked"

@@ -16,7 +16,6 @@ protegem, em uma frase cada:
 """
 
 import json
-import unittest
 import unittest.mock
 
 from nine_rtksync.credential_check import (

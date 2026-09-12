@@ -150,6 +150,15 @@ class SyncEngine:
                         # linha velha, ou o ciclo anunciava renovacao que nao
                         # houve.
                         if refreshed_data:
+                            if renewed:
+                                # Carimbar aqui, e nao dentro de cada provider,
+                                # faz qualquer handler futuro ja nascer certo. O
+                                # painel lia `lastRefreshAt` e nenhum provider o
+                                # escrevia, entao "ultima renovacao" mostrava na
+                                # verdade o horario da ultima verificacao.
+                                refreshed_data["lastRefreshAt"] = datetime.now(
+                                    timezone.utc
+                                ).isoformat(timespec="milliseconds").replace("+00:00", "Z")
                             update_connection_data(self.settings.db_path, conn.id, refreshed_data)
                         if renewed:
                             summary["refreshed"] += 1
