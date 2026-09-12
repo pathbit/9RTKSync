@@ -1,0 +1,34 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "9rtksync"
+version = "1.0.0"
+description = "9Router Universal Token & Connection Synchronizer"
+readme = "README.md"
+authors = [
+    { name = "Eliel Sousa", email = "eliel@pathbit.co" }
+]
+license = { text = "MIT" }
+requires-python = ">=3.10"
+keywords = ["9router", "oauth", "token-sync", "llm", "antigravity", "claude-code"]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.14",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Topic :: Utilities",
+]
+
+[project.urls]
+Homepage = "https://github.com/pathbit/9rtksync"
+Repository = "https://github.com/pathbit/9rtksync"
+Issues = "https://github.com/pathbit/9rtksync/issues"
+
+[project.scripts]
+9rtksync = "nine_rtksync.cli:main"
+9connsync = "nine_rtksync.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]

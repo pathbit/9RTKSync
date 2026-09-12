@@ -1,0 +1,42 @@
+name: 9router-stack
+
+services:
+  9router:
+    image: decolua/9router:latest
+    container_name: 9router
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:20128:20128"
+    environment:
+      - DATA_DIR=/app/data
+      - PORT=20128
+      - HOSTNAME=0.0.0.0
+      - NEXT_PUBLIC_BASE_URL=http://localhost:20128
+      - NODE_ENV=production
+      - INITIAL_PASSWORD=${INITIAL_PASSWORD:-PathbitDevs2026!}
+      - JWT_SECRET=${JWT_SECRET:-9router-jwt-secret-key-pathbit}
+      - REQUIRE_API_KEY=false
+      - REQUIRE_LOGIN=false
+    volumes:
+      - 9router_data:/app/data
+
+  9rtksync:
+    image: ghcr.io/pathbit/9rtksync:latest
+    container_name: 9rtksync
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:9190:9190"
+    volumes:
+      - 9router_data:/app/data
+      - ${HOME}/.gemini:/root/.gemini:ro
+    environment:
+      - DB_PATH=/app/data/db/data.sqlite
+      - SYNC_INTERVAL=300
+      - REFRESH_MARGIN=900
+      - ENABLE_WEB_DASHBOARD=1
+      - WEB_PORT=9190
+    depends_on:
+      - 9router
+
+volumes:
+  9router_data:
