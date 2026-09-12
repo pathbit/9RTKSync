@@ -1,4 +1,4 @@
-"""Motor de agendamento em background (CronScheduler) para o 9RTKSync."""
+"""Background scheduling engine (CronScheduler) for 9RTKSync."""
 
 import threading
 import time
@@ -7,7 +7,7 @@ from typing import Any, Callable, Dict, List, Optional
 
 
 class CronScheduler:
-    """Agendador em background que gerencia a renovação contínua de contas OAuth e integridade de conexões."""
+    """Background scheduler managing continuous OAuth account renewals and connection health."""
 
     def __init__(
         self,
@@ -23,7 +23,7 @@ class CronScheduler:
         self._stop_event = threading.Event()
         self._lock = threading.Lock()
 
-        # Métricas de execução
+        # Execution metrics
         self.total_runs = 0
         self.total_renewals = 0
         self.last_run_at: Optional[str] = None
@@ -32,7 +32,7 @@ class CronScheduler:
         self.history: List[Dict[str, Any]] = []
 
     def start(self):
-        """Inicia a thread de background do cron."""
+        """Start the background cron worker thread."""
         with self._lock:
             if self.is_running:
                 return
@@ -43,17 +43,17 @@ class CronScheduler:
             self._thread.start()
 
     def stop(self):
-        """Finaliza a thread de background graciosamente."""
+        """Gracefully stop the background cron thread."""
         with self._lock:
             self.is_running = False
             self._stop_event.set()
 
     def trigger_now(self) -> Dict[str, Any]:
-        """Dispara uma rodada síncrona manual imediata do cron."""
+        """Trigger an immediate synchronous run of the sync cycle."""
         return self._execute_cycle(reason="manual_trigger")
 
     def get_status(self) -> Dict[str, Any]:
-        """Retorna snapshot detalhado do estado do scheduler para a API e dashboard."""
+        """Return a detailed snapshot of the scheduler state for the API and dashboard."""
         with self._lock:
             return {
                 "active": self.is_running,
@@ -75,7 +75,7 @@ class CronScheduler:
         start_iso = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
 
         ts_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        print(f"[{ts_str}] [CRON] Ciclo disparado ({reason}). Inspecionando conexões de contas OAuth...", flush=True)
+        print(f"[{ts_str}] [CRON] Cycle triggered ({reason}). Inspecting OAuth account connections...", flush=True)
 
         try:
             res = self.sync_callback()
@@ -108,13 +108,13 @@ class CronScheduler:
 
         end_ts = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         print(
-            f"[{end_ts}] [CRON] Ciclo concluído em {duration_ms}ms: {total} contas avaliadas, {refreshed} renovadas via OAuth.",
+            f"[{end_ts}] [CRON] Cycle completed in {duration_ms}ms: {total} accounts evaluated, {refreshed} renewed via OAuth.",
             flush=True,
         )
         return entry
 
     def _run_loop(self):
-        # Executa ciclo de inicialização inicial
+        # Execute startup sync cycle
         self._execute_cycle(reason="startup")
 
         while not self._stop_event.is_set():
@@ -123,3 +123,4 @@ class CronScheduler:
                 break
             if self.is_running:
                 self._execute_cycle(reason="scheduled_interval")
+

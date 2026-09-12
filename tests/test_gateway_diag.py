@@ -1,4 +1,4 @@
-"""Testes de diagnóstico do gateway 9Router e endpoint de teste."""
+"""Diagnostic and test endpoint tests for 9Router gateway."""
 
 import base64
 import json
@@ -71,3 +71,4 @@ class TestGatewayDiag(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+

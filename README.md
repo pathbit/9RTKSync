@@ -6,40 +6,40 @@
 [![Python Version](https://img.shields.io/badge/python-3.14.7-blue.svg)](https://www.python.org/ftp/python/3.14.7/python-3.14.7-macos11.pkg)
 [![Docker Package](https://img.shields.io/badge/docker-ghcr.io%2Fpathbit%2F9rtksync-blue)](https://github.com/pathbit/9RTKSync/pkgs/container/9rtksync)
 
-O **`9RTKSync`** (*9Router Universal Token & Connection Synchronizer*) é um guardião de alta disponibilidade e auto-cura para gateways [9Router](https://github.com/decolua/9router). Ele elimina desconexões súbitas, expiração prematura de tokens OAuth, corrupção de formatos de data e bloqueios residuais de *rate limit*, mantendo qualquer conta conectada ativa e saudável.
+**`9RTKSync`** (*9Router Universal Token & Connection Synchronizer*) is a high-availability self-healing guardian for [9Router](https://github.com/decolua/9router) gateways. It eliminates sudden disconnects, premature OAuth token expirations, date format corruptions, and lingering rate-limit locks, keeping all connected accounts healthy and persistent.
 
 ---
 
-## Recursos Principais
+## Core Features
 
-* **Auto-Cura Numérica de Expiração**
-  * O 9Router nativamente grava o campo `expiresAt` como texto ISO (ex: `"2026-09-12T11:54:08.336Z"`). Isso quebra validações numéricas internas gerando falsos erros HTTP 503.
-  * O `9RTKSync` monitora o banco SQLite e converte automaticamente strings para epoch em milissegundos numéricos válidos.
-* **Renovação Preventiva Universal de OAuth**
-  * Conexões **Google Antigravity** e **Gemini CLI**: renova antes da expiração (margem de 15 minutos) e sincroniza tokens gerados localmente no host (`~/.gemini/`).
-  * Conexões **Claude OAuth, GitHub Copilot, OpenAI Codex, AWS Kiro, Codeium Windsurf**: monitora validade de tokens e executa auto-renovação antes que o gateway sofra interrupção.
-* **Desbloqueio de Travas de Rate Limit**
-  * Remove automaticamente travas obsoletas de `rateLimitedUntil` e zera penalidades de backoff assim que o período de espera expira.
-* **Dashboard Web Embutido**
-  * Servidor web nativo ultra-leve na porta `9190` com interface visual moderna, contagem regressiva de validade de cada conta e acionador de sincronização manual via navegador.
-* **Garantia de Combos de Resiliência**
-  * Mantém cadastrados e atualizados no SQLite os combos de fallback (`arsenal-supremo`, `arsenal-rapido`, `arsenal-offline`, `claudegravity-fallback`, `claudegravity-thinking`) sem conflitos de chave única.
-* **Execução Segura em Virtual Environment**
-  * Todo o ecossistema Python executa estritamente isolado em *virtual environment* tanto no container Docker (`/opt/venv`) quanto em ambiente de desenvolvimento local (`.venv`).
+* **Numeric Expiration Self-Healing**
+  * 9Router natively writes the `expiresAt` field as an ISO date string (for example `"2026-09-12T11:54:08.336Z"`). This breaks internal numeric validations and causes false HTTP 503 errors.
+  * `9RTKSync` continuously inspects the SQLite database and automatically converts string timestamps into valid millisecond epoch integers.
+* **Universal Proactive OAuth Renewal**
+  * **Google Antigravity** and **Gemini CLI** connections: renews before expiration (15-minute margin) and synchronizes host tokens generated locally (`~/.gemini/`).
+  * **Claude OAuth, GitHub Copilot, OpenAI Codex, AWS Kiro, Codeium Windsurf**: monitors token validity and triggers renewal before gateway downtime occurs.
+* **Rate-Limit Lock Clearing**
+  * Automatically purges expired `rateLimitedUntil` locks and resets backoff counters as soon as cooldown periods finish.
+* **Built-in Web Dashboard**
+  * Lightweight web server on port `9190` featuring a modern interface, live account countdowns, real-time gateway health diagnostics, and manual sync triggers.
+* **Resilience Combos Enforcement**
+  * Keeps fallback combos registered and synchronized in SQLite (`arsenal-supremo`, `arsenal-rapido`, `arsenal-offline`, `claudegravity-fallback`, `claudegravity-thinking`) without primary key conflicts.
+* **Strict Virtual Environment Execution**
+  * All Python execution strictly isolated in dedicated virtual environments both in Docker containers (`/opt/venv`) and in local setups (`.venv`).
 
 ---
 
-## Como Executar via Docker
+## Running with Docker
 
-O pacote oficial do Docker é publicado automaticamente pelo GitHub Actions no GitHub Container Registry (GHCR):
+Official multi-architecture Docker images (`linux/amd64` and `linux/arm64`) are published automatically to the GitHub Container Registry (GHCR):
 
 ```bash
 docker pull ghcr.io/pathbit/9rtksync:latest
 ```
 
-### Exemplo de Uso no Docker Compose
+### Docker Compose Example
 
-Adicione o serviço `9RTKSync` ao seu `docker-compose.yml` junto ao [9Router](https://github.com/decolua/9router):
+Add `router-sync` to your `docker-compose.yml` alongside [9Router](https://github.com/decolua/9router):
 
 ```yaml
 services:
@@ -93,19 +93,19 @@ volumes:
 
 ---
 
-## Como Executar Localmente em Virtual Environment
+## Local Development in Virtual Environment
 
-Em conformidade com os padrões de isolamento, a execução local utiliza estritamente um ambiente virtual Python com [Python 3.14.7](https://www.python.org/ftp/python/3.14.7/python-3.14.7-macos11.pkg):
+Following standard environment isolation, local runs strictly use a Python virtual environment with [Python 3.14.7](https://www.python.org/ftp/python/3.14.7/python-3.14.7-macos11.pkg):
 
-### 1. Clonar o Repositório
+### 1. Clone the Repository
 
 ```bash
 git clone https://github.com/pathbit/9RTKSync.git
 cd 9RTKSync
 ```
 
-### 2. Criar e Ativar o Virtual Environment
- 
+### 2. Create and Activate the Virtual Environment
+
 ```bash
 python3 -m venv .venv
 source .venv/bin/activate
@@ -113,106 +113,107 @@ pip install --upgrade pip
 pip install -e .
 ```
 
-### 3. Configurar Variáveis de Ambiente (.env)
+### 3. Configure Environment Variables (.env)
 
-Copie o modelo oficial para criar seu `.env` local (o arquivo `.env` é estritamente ignorado no git):
+Copy the official template to create your local `.env` file (the `.env` file is strictly ignored by git):
 
 ```bash
 cp .env.example .env
 ```
 
-### 4. Comandos Disponíveis via Virtual Environment
+### 4. Available CLI Commands
 
 ```bash
-# Exibir status das conexões do 9Router e combos
-9RTKSync --status --db-path /caminho/para/data.sqlite
+# View current status of 9Router connections and combos
+9RTKSync --status --db-path /path/to/data.sqlite
 
-# Executar uma rodada única imediata de sincronização
-9RTKSync --once --db-path /caminho/para/data.sqlite
+# Run an immediate one-shot synchronization pass
+9RTKSync --once --db-path /path/to/data.sqlite
 
-# Executar daemon contínuo com dashboard web na porta 9190
-9RTKSync --daemon --db-path /caminho/para/data.sqlite
+# Run continuous background daemon with web dashboard on port 9190
+9RTKSync --daemon --db-path /path/to/data.sqlite
 ```
 
 ---
 
-## Variáveis de Ambiente
+## Environment Variables
 
-| Variável | Padrão | Descrição |
+| Variable | Default | Description |
 | :--- | :--- | :--- |
-| `DB_PATH` | `/app/data/db/data.sqlite` | Caminho do arquivo SQLite do 9Router |
-| `ROUTER_URL` | `http://127.0.0.1:20128` | URL base do gateway 9Router para testes de conectividade |
-| `SYNC_INTERVAL` | `300` | Intervalo em segundos entre varreduras no modo daemon e cron |
-| `REFRESH_MARGIN` | `900` | Margem prévia em segundos para renovação de tokens |
-| `ENABLE_WEB_DASHBOARD` | `1` | Ativa o dashboard web embutido (`1` para sim, `0` para não) |
-| `WEB_PORT` | `9190` | Porta do dashboard web HTTP |
-| `WEB_HOST` | `0.0.0.0` | Interface de rede para o servidor web |
-| `DASHBOARD_USER` | `admin` | Usuário de autenticação HTTP Basic Auth |
-| `DASHBOARD_PASSWORD` | `pathbit` | Senha padrão inicial de autenticação HTTP Basic Auth |
-| `ANTIGRAVITY_TOKEN_PATH` | auto | Caminho customizado para arquivo de token do Antigravity |
+| `DB_PATH` | `/app/data/db/data.sqlite` | Absolute path to the 9Router SQLite database |
+| `ROUTER_URL` | `http://127.0.0.1:20128` | Base URL of the 9Router gateway for diagnostics and integration |
+| `SYNC_INTERVAL` | `300` | Sync and background cron loop interval in seconds |
+| `REFRESH_MARGIN` | `900` | Proactive token renewal margin in seconds before expiration |
+| `ENABLE_WEB_DASHBOARD` | `1` | Enable the embedded web dashboard (`1` to enable, `0` to disable) |
+| `WEB_PORT` | `9190` | HTTP port for the web dashboard |
+| `WEB_HOST` | `0.0.0.0` | Network binding interface for the dashboard web server |
+| `DASHBOARD_USER` | `admin` | HTTP Basic Auth username for web dashboard access |
+| `DASHBOARD_PASSWORD` | `pathbit` | Default HTTP Basic Auth password for web dashboard access |
+| `ANTIGRAVITY_TOKEN_PATH` | auto | Custom path for Antigravity OAuth token file |
 
 ---
 
-## Dashboard Web
+## Web Dashboard
 
-Ao rodar com `ENABLE_WEB_DASHBOARD=1`, acesse no navegador:
+When running with `ENABLE_WEB_DASHBOARD=1`, access the dashboard in your browser:
 
 👉 **http://localhost:9190**
 
-Recursos do painel:
-* Métricas em tempo real (Total de Conexões, Contas OAuth, Chaves de API, Combos).
-* Tabela de conexões com tempo restante de cada token e badges de saúde.
-* Tabela de combos e cascatas de modelos ativos.
-* Botão **Sincronizar Agora** para forçar sincronização sob demanda via API REST (`POST /api/sync`).
+Dashboard capabilities:
+* Live operational metrics (Total Connections, OAuth Accounts, API Keys, Resilience Combos).
+* Real-time countdown meters with visual health badges for every connection.
+* Gateway diagnostic card with millisecond latency testing (`POST /api/test-gateway`).
+* Password change modal for credential rotation (`POST /api/change-password`).
+* Manual sync trigger via REST API (`POST /api/sync` and `POST /api/cron-run`).
 
 ---
 
-## Testes Unitários
+## Unit and Integration Testing
 
-Você pode executar os testes sem instalar absolutamente nada na sua máquina host (exceto o Docker), ou opcionalmente em ambiente virtual local.
+You can run the test suite with zero installations on your host machine (Docker only), or locally via your virtual environment.
 
-### Opção 1. Via Container Docker (Zero Instalação na Máquina)
+### Option 1. Container Testing (Zero Host Installation)
 
-O único pré-requisito é ter o Docker instalado. Nada mais precisa ser instalado na máquina:
+The only requirement is Docker. Nothing else needs to be installed on your machine:
 
 ```bash
-# Via script shell direto
+# Direct shell test runner
 ./run_tests.sh
 
-# Ou via Makefile
+# Or via Makefile target
 make test-container
 
-# Ou via Docker Compose
+# Or via Docker Compose
 docker compose -f docker-compose.test.yml run --rm test
 ```
 
-### Opção 2. Via Virtual Environment Local (Pré-requisitos Opcionais)
+### Option 2. Local Virtual Environment (Optional Prerequisites)
 
-Se optar por executar no host com Python 3.14+:
+If you prefer testing directly on your host with Python 3.14+:
 
 ```bash
 source .venv/bin/activate
 make test
-# Ou diretamente:
+# Or directly
 PYTHONPATH=src python3 -m unittest discover -s tests -p "test_*.py"
 ```
 
 ---
 
-## Contribuição e Proteção da Branch Master
+## Contributing and Branch Protection
 
-* A branch `master` é protegida. Toda alteração deve ser submetida via Pull Request e aprovada pela suíte de CI.
-* Para reportar problemas ou sugerir novos provedores, utilize os formulários em [Issues](https://github.com/pathbit/9RTKSync/issues).
-* Referência oficial do projeto base: [9Router no GitHub](https://github.com/decolua/9router).
-
----
-
-## 📄 Licença
-
-Distribuído sob a Licença MIT. O texto completo está em [LICENSE](https://github.com/pathbit/9RTKSync/blob/master/LICENSE).
-
-Na prática: use, copie, altere e redistribua à vontade, inclusive comercialmente, desde que o aviso de copyright e a licença acompanhem as cópias. O software é fornecido como está, sem garantias.
+* The `master` branch is protected. All contributions must be submitted through Pull Requests and pass all CI checks.
+* For bug reports or new provider requests, please open an issue in [GitHub Issues](https://github.com/pathbit/9RTKSync/issues).
+* Official upstream gateway: [9Router on GitHub](https://github.com/decolua/9router).
 
 ---
 
-Desenvolvido com ❤️ pela [Pathbit](https://pathbit.co/)
+## 📄 License
+
+Distributed under the MIT License. The full text is available in [LICENSE](https://github.com/pathbit/9RTKSync/blob/master/LICENSE).
+
+In practice: use, copy, modify, and distribute freely, including commercially, provided that copyright and license notices accompany copies. The software is provided as is, without warranty.
+
+---
+
+Developed with ❤️ by [Pathbit](https://pathbit.co/)

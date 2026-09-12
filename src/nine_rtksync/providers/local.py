@@ -1,4 +1,4 @@
-"""Manipulador para provedores locais e compatíveis com OpenAI (Ollama, vLLM, LMStudio)."""
+"""Handler for local and OpenAI-compatible providers (Ollama, vLLM, LMStudio)."""
 
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional, Tuple
@@ -8,7 +8,7 @@ from .base import BaseProvider
 
 
 class LocalProvider(BaseProvider):
-    """Monitor de integridade para instâncias locais e proxies compatíveis com OpenAI."""
+    """Health monitor for local instances and OpenAI-compatible proxies."""
 
     def can_handle(self, conn: ConnectionRecord) -> bool:
         p = conn.provider.lower()
@@ -27,21 +27,22 @@ class LocalProvider(BaseProvider):
         data = dict(conn.data)
         modified = False
 
-        # Remove qualquer trava de rate limit acidental
+        # Remove any accidental rate limit locks
         if data.get("rateLimitedUntil"):
             del data["rateLimitedUntil"]
             data["backoffLevel"] = 0
             modified = True
-            messages.append("Trava de rateLimitedUntil removida da conexão local")
+            messages.append("Removed rateLimitedUntil lock from local connection")
 
-        # Garante status ativo
+        # Ensure active status
         if not data.get("testStatus") or data.get("testStatus") != "ok":
             data["testStatus"] = "ok"
             data["lastTested"] = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
             modified = True
-            messages.append("Status local marcado como operacional (ok)")
+            messages.append("Local status marked as operational (ok)")
 
         if not messages:
-            messages.append("Serviço local ativo e operacional")
+            messages.append("Local service active and operational")
 
         return modified, data if modified else None, messages
+

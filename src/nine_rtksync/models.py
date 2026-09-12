@@ -1,4 +1,4 @@
-"""Modelos de dados para conexões, credenciais e estados de saúde no 9Router."""
+"""Data models for connections, credentials, and health states in 9Router."""
 
 import json
 import time
@@ -8,7 +8,7 @@ from typing import Any, Dict, Optional
 
 @dataclass
 class ConnectionRecord:
-    """Representa uma linha da tabela providerConnections no SQLite do 9Router."""
+    """Represents a row from the providerConnections table in 9Router SQLite."""
     id: str
     provider: str
     name: str
@@ -26,12 +26,12 @@ class ConnectionRecord:
 
     @property
     def is_oauth(self) -> bool:
-        """Indica se a conexão utiliza fluxo de tokens OAuth."""
+        """Check whether the connection uses an OAuth token flow."""
         return bool(self.data.get("refreshToken") or self.data.get("accessToken"))
 
     @property
     def has_api_key(self) -> bool:
-        """Indica se a conexão é autenticada por chave estática de API."""
+        """Check whether the connection is authenticated via static API key."""
         return bool(self.data.get("apiKey"))
 
     @property
@@ -48,10 +48,10 @@ class ConnectionRecord:
 
     @property
     def expires_at_ms(self) -> Optional[int]:
-        """Devolve a expiração normalizada em milissegundos epoch, se aplicável."""
+        """Return normalized expiration timestamp in epoch milliseconds, if applicable."""
         val = self.data.get("expiresAt")
         if isinstance(val, (int, float)) and val > 0:
-            # Se for epoch em segundos (ex: 1.7e9), converte para milissegundos
+            # If epoch is in seconds (e.g. 1.7e9), convert to milliseconds
             if val < 1e11:
                 return int(val * 1000)
             return int(val)
@@ -59,7 +59,7 @@ class ConnectionRecord:
 
     @property
     def remaining_seconds(self) -> Optional[int]:
-        """Segundos restantes de validade da credencial."""
+        """Seconds remaining before credential expires."""
         exp = self.expires_at_ms
         if exp is None:
             return None
@@ -68,26 +68,26 @@ class ConnectionRecord:
 
     @property
     def is_expired(self) -> bool:
-        """Determina se a credencial já expirou."""
+        """Check whether the credential has already expired."""
         rem = self.remaining_seconds
         return rem is not None and rem <= 0
 
     @property
     def health_status(self) -> str:
-        """Classificação semântica do estado da conexão."""
+        """Semantic classification of connection health."""
         if self.is_oauth:
             rem = self.remaining_seconds
             if rem is None:
-                return "sem_expiracao"
+                return "no_expiration"
             if rem <= 0:
-                return "expirado"
+                return "expired"
             if rem < 900:
-                return "expirando_em_breve"
-            return "ativo"
+                return "expiring_soon"
+            return "active"
         if self.has_api_key:
             if self.data.get("rateLimitedUntil"):
                 return "rate_limited"
-            return "ativo"
+            return "active"
         if self.data.get("baseUrl") or "ollama" in self.provider.lower():
-            return "ativo"
-        return "ativo" if self.data.get("testStatus") == "ok" else "desconhecido"
+            return "active"
+        return "active" if self.data.get("testStatus") == "ok" else "unknown"

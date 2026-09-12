@@ -1,4 +1,4 @@
-"""Testes unitários para o módulo database.py."""
+"""Unit tests for the database.py module."""
 
 import json
 import os
@@ -21,7 +21,7 @@ class TestDatabase(unittest.TestCase):
         self.db_path = self.tmp.name
         self.tmp.close()
 
-        # Cria esquema equivalente ao do 9Router
+        # Create schema equivalent to 9Router
         conn = sqlite3.connect(self.db_path)
         c = conn.cursor()
         c.execute("""
@@ -80,15 +80,15 @@ class TestDatabase(unittest.TestCase):
         self.assertEqual(conns[0].data["testStatus"], "ok")
 
     def test_upsert_combos_no_unique_constraint_violation(self):
-        # Simula primeira inserção com combo_arsenal_supremo
+        # Simulate initial insertion with combo_arsenal_supremo
         combos_list = [
             ("combo_arsenal_supremo", "arsenal-supremo", "llm", json.dumps(["model1", "model2"]))
         ]
         inserted = upsert_combos(self.db_path, combos_list)
         self.assertEqual(inserted, 1)
 
-        # Segunda passada com ID diferente mas mesmo name (arsenal-supremo)
-        # Deve atualizar o registro existente sem quebrar com UNIQUE constraint failed!
+        # Second pass with different ID but same name (arsenal-supremo)
+        # Should update existing record without failing UNIQUE constraint
         combos_list_pass_2 = [
             ("arsenal-supremo", "arsenal-supremo", "llm", json.dumps(["model1", "model2", "model3"]))
         ]
@@ -103,3 +103,4 @@ class TestDatabase(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+

@@ -1,4 +1,4 @@
-"""Configurações globais e carregamento de variáveis de ambiente para o 9rtksync."""
+"""Global settings and environment variable loading for 9RTKSync."""
 
 import os
 import sys
@@ -11,7 +11,7 @@ def _is_truthy(val: str) -> bool:
 
 
 def load_dotenv(dotenv_path: str = ".env") -> None:
-    """Carrega variaveis de um arquivo .env para os.environ se nao estiverem definidas."""
+    """Load variables from a .env file into os.environ if they are not already set."""
     if not os.path.isfile(dotenv_path):
         return
     try:
@@ -33,7 +33,7 @@ def load_dotenv(dotenv_path: str = ".env") -> None:
 
 @dataclass
 class Settings:
-    """Configurações de execução do sincronizador."""
+    """Runtime configuration for 9RTKSync synchronizer."""
     db_path: str
     sync_interval: int = 300
     refresh_margin: int = 900
@@ -49,7 +49,7 @@ class Settings:
     cron_interval: int = 300
 
     def get_auth_file_path(self) -> str:
-        """Retorna o caminho para persistência de credenciais do dashboard."""
+        """Return the filesystem path for persisted dashboard credentials."""
         base_dir = os.environ.get("DATA_DIR", "")
         if not base_dir and self.db_path:
             base_dir = os.path.dirname(self.db_path)
@@ -58,7 +58,7 @@ class Settings:
         return os.path.join(base_dir, ".dashboard_auth.json")
 
     def get_auth_credentials(self) -> tuple[str, str]:
-        """Obtém credenciais ativas do dashboard (arquivo salvo -> env -> padrão)."""
+        """Get active dashboard credentials (persisted file -> env -> defaults)."""
         auth_file = self.get_auth_file_path()
         if os.path.exists(auth_file):
             try:
@@ -74,12 +74,12 @@ class Settings:
         return self.dashboard_user, self.dashboard_password
 
     def is_default_password(self) -> bool:
-        """Indica se a senha em uso ainda é a padrão de fábrica (pathbit)."""
+        """Check if the active password is still the factory default (pathbit)."""
         _, p = self.get_auth_credentials()
         return p == "pathbit"
 
     def update_auth_credentials(self, user: str, new_pass: str) -> bool:
-        """Salva novas credenciais de acesso no arquivo seguro do dashboard."""
+        """Save new dashboard credentials to the secure credentials file."""
         auth_file = self.get_auth_file_path()
         try:
             import json
@@ -113,7 +113,7 @@ class Settings:
         ]
         valid_paths = [p for p in default_paths if p]
 
-        # Descoberta de banco SQLite do 9Router e OmniRoute
+        # SQLite database discovery for 9Router and OmniRoute
         db_path = os.environ.get("DB_PATH", "")
         if not db_path:
             candidate_dbs = [

@@ -1,4 +1,4 @@
-"""Testes unitários para o motor universal de descoberta no host."""
+"""Unit tests for the universal host discovery engine."""
 
 import json
 import os
@@ -74,7 +74,7 @@ class TestDiscoveryEngine(unittest.TestCase):
         self.assertEqual(res["apiKey"], "sk-openai-test-key")
 
     def test_providers_with_discovery(self):
-        # 1. Google Provider usa descoberta
+        # 1. Google Provider uses discovery
         gemini_dir = os.path.join(self.tmp_dir, ".gemini")
         os.makedirs(gemini_dir, exist_ok=True)
         with open(os.path.join(gemini_dir, "oauth_creds.json"), "w") as f:
@@ -93,7 +93,7 @@ class TestDiscoveryEngine(unittest.TestCase):
         self.assertTrue(mod)
         self.assertEqual(data["accessToken"], "ya29.host_new")
 
-        # 2. ApiKey Provider usa descoberta
+        # 2. ApiKey Provider uses discovery
         claude_dir = os.path.join(self.tmp_dir, ".claude")
         os.makedirs(claude_dir, exist_ok=True)
         with open(os.path.join(claude_dir, "settings.json"), "w") as f:
@@ -112,7 +112,7 @@ class TestDiscoveryEngine(unittest.TestCase):
         self.assertTrue(mod)
         self.assertEqual(data["apiKey"], "sk-ant-new-host")
 
-        # 3. Local Provider lida com Ollama
+        # 3. Local Provider handles Ollama
         lp = LocalProvider()
         conn_ollama = ConnectionRecord(
             id="c3",
@@ -130,3 +130,4 @@ class TestDiscoveryEngine(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+

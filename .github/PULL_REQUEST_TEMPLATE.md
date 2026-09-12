@@ -1,17 +1,18 @@
-## Descrição das Alterações
+## Description of Changes
 
-Explique de forma clara e objetiva o que este Pull Request resolve, aprimora ou adiciona ao `9RTKSync`.
+Explain clearly what this Pull Request resolves, enhances, or adds to `9RTKSync`.
 
-## Tipo de Alteração
+## Change Type
 
-- [ ] Correção de bug (bugfix)
-- [ ] Novo recurso ou suporte a provedor (feature)
-- [ ] Refatoração ou melhoria de performance
-- [ ] Atualização de documentação ou testes
+- [ ] Bug fix
+- [ ] New feature or provider support
+- [ ] Refactoring or performance optimization
+- [ ] Documentation or test update
 
-## Checklist de Verificação
+## Verification Checklist
 
-- [ ] Os testes unitários passam localmente (`PYTHONPATH=src python3 -m unittest discover -s tests -p "test_*.py"`).
-- [ ] Não há vazamento de chaves privadas, tokens ou segredos nos arquivos ou commits.
-- [ ] As mensagens de commit são claras e descritivas.
-- [ ] O código segue os padrões PEP 8 e arquitetura do projeto.
+- [ ] Unit tests pass cleanly (`PYTHONPATH=src python3 -m unittest discover -s tests -p "test_*.py"` or `./run_tests.sh`).
+- [ ] No private keys, secrets, or tokens are leaked in commits or files.
+- [ ] Commit messages are clean, concise, and descriptive.
+- [ ] Code complies with PEP 8 and project architecture standards.
+

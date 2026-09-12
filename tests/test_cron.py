@@ -1,4 +1,4 @@
-"""Testes unitários para o CronScheduler do 9RTKSync."""
+"""Unit tests for the 9RTKSync CronScheduler."""
 
 import time
 import unittest
@@ -19,7 +19,7 @@ class TestCronScheduler(unittest.TestCase):
         self.assertFalse(status_init["active"])
         self.assertEqual(status_init["totalRuns"], 0)
 
-        # Disparo manual
+        # Manual trigger
         res = cron.trigger_now()
         self.assertTrue(res["success"])
         self.assertEqual(res["totalInspected"], 5)
@@ -36,3 +36,4 @@ class TestCronScheduler(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+

@@ -1,4 +1,4 @@
-"""Manipulador genérico de conexões OAuth (Claude, GitHub, Kiro, Codex, Windsurf)."""
+"""Generic OAuth connection handler (Claude, GitHub, Kiro, Codex, Windsurf)."""
 
 import json
 import time
@@ -11,7 +11,7 @@ from .base import BaseProvider
 
 
 class GenericOAuthProvider(BaseProvider):
-    """Monitor e sincronizador para provedores OAuth genéricos."""
+    """Monitor and synchronizer for generic OAuth providers."""
 
     KNOWN_TOKEN_URLS = {
         "claude": "https://api.anthropic.com/v1/oauth/token",
@@ -34,7 +34,7 @@ class GenericOAuthProvider(BaseProvider):
         data = dict(conn.data)
         now_ms = int(time.time() * 1000)
 
-        # 1. Verifica se há credencial correspondente descoberta no host
+        # 1. Check if matching credential was discovered on host
         if self.discovery:
             local = self.discovery.get_credential_for_provider(conn.provider)
             if local and local.get("accessToken") and local.get("accessToken") != data.get("accessToken"):
@@ -44,26 +44,26 @@ class GenericOAuthProvider(BaseProvider):
                 data["expiresAt"] = now_ms + (3599 * 1000)
                 data["testStatus"] = "ok"
                 src = local.get("source_path", "host")
-                messages.append(f"Token sincronizado a partir de credencial local do host ({src})")
+                messages.append(f"Token synchronized from host local credential ({src})")
                 return True, data, messages
 
         rem = conn.remaining_seconds
 
         if rem is None:
-            messages.append("Conexão OAuth sem registro de validade temporal (token de longa duração ou ilimitado)")
+            messages.append("OAuth connection has no temporal expiry record (long-lived or unlimited token)")
             return False, None, messages
 
         if rem > margin_seconds:
-            messages.append(f"Token válido por mais {rem // 60} min ({rem}s restantes)")
+            messages.append(f"Token valid for another {rem // 60} min ({rem}s remaining)")
             return False, None, messages
 
-        # Se chegou na margem de renovação
+        # Reached renewal margin
         refresh_token = data.get("refreshToken")
         if not refresh_token:
-            messages.append("Token expirando mas não há refreshToken gravado na conexão")
+            messages.append("Token expiring but no refreshToken stored in connection")
             return False, None, messages
 
-        # Tenta renovação se conhecermos o endpoint ou se houver client credentials
+        # Attempt renewal if token URL is known or client credentials exist
         token_url = self.KNOWN_TOKEN_URLS.get(conn.provider) or data.get("tokenUrl")
         client_id = data.get("clientId")
         client_secret = data.get("clientSecret")
@@ -100,10 +100,11 @@ class GenericOAuthProvider(BaseProvider):
                         exp_in = int(res_data.get("expires_in", 3600))
                         data["expiresAt"] = now_ms + (exp_in * 1000)
                         data["testStatus"] = "ok"
-                        messages.append(f"Token OAuth renovado com sucesso via endpoint ({exp_in}s)")
+                        messages.append(f"OAuth token renewed successfully via endpoint ({exp_in}s)")
                         return True, data, messages
             except Exception as e:
-                messages.append(f"Tentativa de refresh automático via endpoint retornou: {e}")
+                messages.append(f"Automatic refresh attempt via endpoint returned: {e}")
 
-        messages.append(f"Atenção: Token expira em {rem}s e aguarda refresh sob demanda do gateway")
+        messages.append(f"Notice: Token expires in {rem}s and awaits on-demand gateway refresh")
         return False, None, messages
+

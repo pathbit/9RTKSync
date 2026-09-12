@@ -1,4 +1,4 @@
-"""Manipulador de credenciais Google (Antigravity e Gemini CLI)."""
+"""Google credential handler (Antigravity and Gemini CLI)."""
 
 import json
 import os
@@ -13,7 +13,7 @@ from .base import BaseProvider
 
 
 class GoogleProvider(BaseProvider):
-    """Gerenciador de OAuth para Google Antigravity e Gemini CLI."""
+    """OAuth manager for Google Antigravity and Gemini CLI."""
 
     OAUTH_TOKEN_URL = "https://oauth2.googleapis.com/token"
 
@@ -25,7 +25,7 @@ class GoogleProvider(BaseProvider):
         return conn.provider in ("antigravity", "gemini-cli")
 
     def find_local_credential_file(self) -> Optional[str]:
-        """Localiza arquivo de token montado do host."""
+        """Locate host-mounted token file."""
         if self.discovery:
             disc = self.discovery.discover_google()
             if disc and disc.get("source_path"):
@@ -36,7 +36,7 @@ class GoogleProvider(BaseProvider):
         return None
 
     def read_local_credential(self) -> Optional[Dict[str, Any]]:
-        """Lê o arquivo de token local se presente."""
+        """Read local token file if present."""
         if self.discovery:
             disc = self.discovery.discover_google()
             if disc and disc.get("accessToken"):
@@ -61,19 +61,19 @@ class GoogleProvider(BaseProvider):
             return None
 
     def discover_client_secrets(self, conn: ConnectionRecord) -> Tuple[str, str]:
-        """Extrai clientId e clientSecret do próprio payload ou de variáveis."""
+        """Extract clientId and clientSecret from payload or environment variables."""
         client_id = conn.data.get("clientId") or os.environ.get("GOOGLE_CLIENT_ID", "")
         client_secret = conn.data.get("clientSecret") or os.environ.get("GOOGLE_CLIENT_SECRET", "")
         if client_id and client_secret:
             return client_id, client_secret
 
-        # Tenta descobrir no arquivo local do host
+        # Try to discover from host local file
         local = self.read_local_credential()
         if local:
             client_id = local.get("client_id") or local.get("clientId") or client_id
             client_secret = local.get("client_secret") or local.get("clientSecret") or client_secret
 
-        # Fallback: descobrir nos arquivos de provedores do 9Router se estiver rodando no mesmo container/volume
+        # Fallback: discover in 9Router provider files if running in the same container/volume
         data_dir = os.environ.get("DATA_DIR", "/app/data")
         candidate_files = [
             os.path.join(data_dir, "shared.js"),
@@ -103,9 +103,9 @@ class GoogleProvider(BaseProvider):
     def refresh_oauth_token(
         self, refresh_token: str, client_id: str, client_secret: str
     ) -> Tuple[bool, Optional[Dict[str, Any]], str]:
-        """Dispara requisição HTTPS padrão para oauth2.googleapis.com."""
+        """Send standard HTTPS request to oauth2.googleapis.com."""
         if not client_id or not client_secret:
-            return False, None, "client_id ou client_secret não configurado no ambiente nem encontrado em shared.js"
+            return False, None, "client_id or client_secret not configured in environment nor found in shared.js"
         payload = urllib.parse.urlencode({
             "grant_type": "refresh_token",
             "refresh_token": refresh_token,
@@ -140,7 +140,7 @@ class GoogleProvider(BaseProvider):
         data = dict(conn.data)
         now_ms = int(time.time() * 1000)
 
-        # 1. Se há credencial local no host
+        # 1. If there is a local credential on the host
         local = self.read_local_credential()
         needs_refresh = False
 
@@ -149,7 +149,7 @@ class GoogleProvider(BaseProvider):
             if local_ref and data.get("refreshToken") != local_ref:
                 data["refreshToken"] = local_ref
                 needs_refresh = True
-                messages.append("RefreshToken atualizado a partir do host")
+                messages.append("RefreshToken updated from host")
 
             local_tok = local.get("access_token") or local.get("accessToken")
             local_exp_ms = parse_iso_or_str_to_ms(local.get("expiry"))
@@ -159,44 +159,44 @@ class GoogleProvider(BaseProvider):
                 data["accessToken"] = local_tok
                 data["expiresAt"] = local_exp_ms or (now_ms + (3599 * 1000))
                 data["testStatus"] = "ok"
-                messages.append("Token atualizado a partir de arquivo de credencial local do host")
+                messages.append("Token updated from host local credential file")
                 return True, data, messages
 
-        # 2. Avalia necessidade de renovação
+        # 2. Evaluate need for renewal
         rem = conn.remaining_seconds
 
         if data.get("errorCode") in (401, 403) or data.get("lastError") or data.get("rateLimitedUntil") or any(k.startswith("modelLock_") for k in data):
             needs_refresh = True
-            messages.append("Conexão com pendência de erro ou trava de modelo no gateway; acionando renovação OAuth")
+            messages.append("Connection has pending error or model lock on gateway; triggering OAuth renewal")
 
         if rem is None:
             needs_refresh = True
-            messages.append("expiresAt ausente ou corrompido")
+            messages.append("expiresAt missing or corrupted")
         elif rem <= margin_seconds:
             needs_refresh = True
-            messages.append(f"Validade próxima do fim ({rem}s restantes <= {margin_seconds}s)")
+            messages.append(f"Validity near expiration ({rem}s remaining <= {margin_seconds}s)")
 
         if not needs_refresh:
-            messages.append(f"Token válido por mais {rem // 60} min")
+            messages.append(f"Token valid for another {rem // 60} min")
             return False, None, messages
 
-        # 3. Executa a renovação OAuth
+        # 3. Perform OAuth renewal
         refresh_token = data.get("refreshToken")
         if not refresh_token and local:
             refresh_token = local.get("refresh_token") or local.get("refreshToken")
 
         if not refresh_token:
-            messages.append("refreshToken não disponível para renovação automática")
+            messages.append("refreshToken not available for automated renewal")
             return False, None, messages
 
         client_id, client_secret = self.discover_client_secrets(conn)
         if not client_id or not client_secret:
-            messages.append("clientId ou clientSecret não localizados para este provedor")
+            messages.append("clientId or clientSecret not found for this provider")
             return False, None, messages
 
         ok, resp, err = self.refresh_oauth_token(refresh_token, client_id, client_secret)
         if not ok:
-            messages.append(f"Falha na renovação OAuth: {err}")
+            messages.append(f"OAuth renewal failed: {err}")
             return False, None, messages
 
         expires_in = int(resp.get("expires_in", 3599))
@@ -207,7 +207,7 @@ class GoogleProvider(BaseProvider):
         data["testStatus"] = "ok"
         data["backoffLevel"] = 0
 
-        # Limpa todas as travas e erros residuais
+        # Clean residual locks and errors
         for k in list(data.keys()):
             if k.startswith("modelLock_"):
                 del data[k]
@@ -220,5 +220,6 @@ class GoogleProvider(BaseProvider):
         if "lastErrorAt" in data:
             del data["lastErrorAt"]
 
-        messages.append(f"Access token renovado com sucesso via Google OAuth ({expires_in}s)")
+        messages.append(f"Access token successfully renewed via Google OAuth ({expires_in}s)")
         return True, data, messages
+
