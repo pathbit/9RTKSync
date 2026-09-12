@@ -213,11 +213,11 @@ class TestApiKeyProviderIntegration(unittest.TestCase):
         self.assertEqual(data["credentialState"], cc.STATE_INVALID)
         self.assertTrue(any("REJECTED" in m for m in msgs))
 
-    def test_accepted_key_is_stamped_ok_with_evidence(self):
+    def test_accepted_key_is_stamped_active_with_evidence(self):
         provider = ApiKeyProvider(validate_credentials=True, opener=opener_returning(200))
         conn = self.build("groq", {"apiKey": "boa"})
         _, data, _ = provider.check_and_refresh(conn)
-        self.assertEqual(data["testStatus"], "ok")
+        self.assertEqual(data["testStatus"], "active")
         self.assertEqual(data["credentialState"], cc.STATE_VALID)
         self.assertTrue(data["credentialCheckedAt"])
 

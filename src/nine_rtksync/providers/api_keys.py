@@ -81,7 +81,7 @@ class ApiKeyProvider(BaseProvider):
             modified = True
 
             if result.state == STATE_VALID:
-                data["testStatus"] = "ok"
+                data["testStatus"] = "active"
                 messages.append(f"API key accepted by the provider ({result.detail})")
             elif result.state == STATE_INVALID:
                 # Do not claim health the provider just denied.

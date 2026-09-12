@@ -9,7 +9,7 @@ import time
 import urllib.error
 import urllib.request
 from http import HTTPStatus
-from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from http.server import BaseHTTPRequestHandler, HTTPServer, ThreadingHTTPServer
 from typing import Any, Callable, Dict, Optional
 
 from urllib.parse import parse_qs, urlparse
@@ -55,6 +55,8 @@ class DashboardHandler(BaseHTTPRequestHandler):
     cron_scheduler: Optional[Any] = None
     db_path: str = ""
     router_url: str = ""
+    _last_gw_check: float = 0.0
+    _last_gw_ok: bool = True
 
     def log_message(self, format, *args):
         pass
@@ -280,15 +282,39 @@ class DashboardHandler(BaseHTTPRequestHandler):
 
     def serve_healthz(self):
         db_ok = bool(self.db_path and os.path.exists(self.db_path))
-        router_ok = self.probe_router()
+        router_ok = True
+        if self.router_url:
+            now = time.time()
+            if now - DashboardHandler._last_gw_check < 15.0:
+                router_ok = DashboardHandler._last_gw_ok
+            else:
+                try:
+                    req = urllib.request.Request(
+                        self.router_url,
+                        headers={"User-Agent": "9RTKSync-Healthcheck/1.0"},
+                    )
+                    with urllib.request.urlopen(req, timeout=3.0) as resp:
+                        router_ok = resp.status < 500
+                except urllib.error.HTTPError as e:
+                    router_ok = e.code < 500
+                except Exception:
+                    router_ok = False
+                DashboardHandler._last_gw_check = now
+                DashboardHandler._last_gw_ok = router_ok
 
         if db_ok and router_ok:
-            payload = b"OK"
-            status = HTTPStatus.OK
+            self.send_response(HTTPStatus.OK)
+            self.send_header("Content-Type", "text/plain")
+            self.send_header("Cache-Control", "no-store")
+            self.end_headers()
+            self.wfile.write(b"OK")
         else:
             reason = "DATABASE_NOT_READY" if not db_ok else "ROUTER_SERVICE_UNREACHABLE"
-            payload = reason.encode("utf-8")
-            status = HTTPStatus.SERVICE_UNAVAILABLE
+            self.send_response(HTTPStatus.SERVICE_UNAVAILABLE)
+            self.send_header("Content-Type", "text/plain")
+            self.send_header("Cache-Control", "no-store")
+            self.end_headers()
+            self.wfile.write(reason.encode("utf-8"))
 
         self.send_response(status)
         self.send_header("Content-Type", "text/plain")
@@ -589,7 +615,7 @@ def start_web_server(
     sync_callback: Optional[Callable[[], Dict[str, Any]]] = None,
     settings: Optional[Settings] = None,
     cron_scheduler: Optional[Any] = None,
-) -> ThreadingHTTPServer:
+    ) -> ThreadingHTTPServer:
     """Start HTTP server on background thread with Basic Auth and Cron Scheduler."""
     DashboardHandler.db_path = db_path
     DashboardHandler.router_url = router_url

@@ -158,7 +158,7 @@ class GoogleProvider(BaseProvider):
             if local_tok and local_tok != data.get("accessToken") and local_is_valid and not data.get("rateLimitedUntil") and not data.get("errorCode"):
                 data["accessToken"] = local_tok
                 data["expiresAt"] = local_exp_ms or (now_ms + (3599 * 1000))
-                data["testStatus"] = "ok"
+                data["testStatus"] = "active"
                 messages.append("Token updated from host local credential file")
                 return True, data, messages
 
@@ -204,7 +204,7 @@ class GoogleProvider(BaseProvider):
         if resp.get("refresh_token"):
             data["refreshToken"] = resp["refresh_token"]
         data["expiresAt"] = now_ms + (expires_in * 1000)
-        data["testStatus"] = "ok"
+        data["testStatus"] = "active"
         data["backoffLevel"] = 0
 
         # Clean residual locks and errors

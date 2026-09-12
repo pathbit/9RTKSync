@@ -96,11 +96,11 @@ class LocalProvider(BaseProvider):
                 modified = True
             messages.append(f"Local instance answered with {len(models)} model(s): {', '.join(models[:5])}")
 
-            if data.get("testStatus") != "ok":
-                data["testStatus"] = "ok"
+            if data.get("testStatus") != "active":
+                data["testStatus"] = "active"
                 data["lastTested"] = now_iso
                 modified = True
-                messages.append("Local status marked as operational (ok)")
+                messages.append("Local status marked as operational (active)")
         else:
             # With no catalog response the connection is not assumed healthy: this is
             # exactly the "the local Ollama went down and nobody noticed" case.

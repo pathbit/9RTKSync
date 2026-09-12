@@ -159,4 +159,4 @@ class ConnectionRecord:
             return "active" if probed == "valid" else "not_checked"
 
         # 9Router writes "ok", OmniRoute writes "active"; both mean healthy.
-        return "active" if self.data.get("testStatus") in ("ok", "active") else "unknown"
+        return "active" if self.data.get("testStatus") in ("ok", "active", "success") else "unknown"

@@ -132,7 +132,7 @@ class TestDiscoveryEngine(unittest.TestCase):
         ):
             mod, data, msgs = lp.check_and_refresh(conn_ollama)
         self.assertTrue(mod)
-        self.assertEqual(data["testStatus"], "ok")
+        self.assertEqual(data["testStatus"], "active")
         self.assertEqual(data["discoveredModels"], ["llama3.2:3b", "qwen2.5:7b"])
 
         # An instance that stops answering must not be reported as healthy.
