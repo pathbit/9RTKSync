@@ -27,10 +27,16 @@ class DashboardHandler(BaseHTTPRequestHandler):
         elif self.path == "/api/status":
             self.serve_api_status()
         elif self.path == "/healthz":
-            self.send_response(HTTPStatus.OK)
-            self.send_header("Content-Type", "text/plain")
-            self.end_headers()
-            self.wfile.write(b"OK")
+            if os.path.exists(self.db_path):
+                self.send_response(HTTPStatus.OK)
+                self.send_header("Content-Type", "text/plain")
+                self.end_headers()
+                self.wfile.write(b"OK")
+            else:
+                self.send_response(HTTPStatus.SERVICE_UNAVAILABLE)
+                self.send_header("Content-Type", "text/plain")
+                self.end_headers()
+                self.wfile.write(b"DATABASE_NOT_READY")
         else:
             self.send_error(HTTPStatus.NOT_FOUND, "Página não encontrada")
 

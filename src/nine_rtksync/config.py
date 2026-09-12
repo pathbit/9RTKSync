@@ -19,6 +19,7 @@ class Settings:
     enable_web: bool = True
     web_host: str = "0.0.0.0"
     web_port: int = 9190
+    router_url: str = "http://127.0.0.1:20128"
     module: str = "all"
     credential_paths: List[str] = None
 
@@ -33,14 +34,17 @@ class Settings:
         ]
         valid_paths = [p for p in default_paths if p]
 
-        # Descoberta de banco SQLite do 9Router
+        # Descoberta de banco SQLite do 9Router e OmniRoute
         db_path = os.environ.get("DB_PATH", "")
         if not db_path:
             candidate_dbs = [
                 "/app/data/db/data.sqlite",
                 "/app/data/data.sqlite",
+                "/app/data/storage.sqlite",
                 os.path.join(home, ".9router", "data", "db", "data.sqlite"),
                 os.path.join(home, ".9router", "data.sqlite"),
+                os.path.join(home, ".omniroute", "data", "storage.sqlite"),
+                os.path.join(home, ".omniroute", "storage.sqlite"),
             ]
             for candidate in candidate_dbs:
                 if os.path.exists(candidate):
@@ -56,6 +60,7 @@ class Settings:
             enable_web=os.environ.get("ENABLE_WEB_DASHBOARD", "1") not in ("0", "false", "no"),
             web_host=os.environ.get("WEB_HOST", "0.0.0.0"),
             web_port=int(os.environ.get("WEB_PORT", "9190")),
+            router_url=os.environ.get("ROUTER_URL", "http://127.0.0.1:20128"),
             module=os.environ.get("MODULE", "all"),
             credential_paths=valid_paths,
         )

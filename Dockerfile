@@ -1,14 +1,14 @@
 # ==============================================================================
-# 9rtksync: 9Router Token & Connection Sync
+# 9RTKSync: 9Router Token & Connection Sync
 # Imagem oficial baseada em Python 3.14 Alpine
 # ==============================================================================
 
 FROM python:3.14-alpine
 
-LABEL org.opencontainers.image.title="9rtksync"
+LABEL org.opencontainers.image.title="9RTKSync"
 LABEL org.opencontainers.image.description="9Router Universal Token & Connection Synchronizer"
 LABEL org.opencontainers.image.authors="Eliel Sousa <eliel@pathbit.co>"
-LABEL org.opencontainers.image.source="https://github.com/pathbit/9rtksync"
+LABEL org.opencontainers.image.source="https://github.com/pathbit/9RTKSync"
 
 WORKDIR /app
 
