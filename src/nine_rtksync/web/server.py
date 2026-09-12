@@ -9,7 +9,7 @@ import time
 import urllib.error
 import urllib.request
 from http import HTTPStatus
-from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from http.server import BaseHTTPRequestHandler, HTTPServer, ThreadingHTTPServer
 from typing import Any, Callable, Dict, Optional
 
 from ..config import Settings
@@ -359,7 +359,7 @@ def start_web_server(
     sync_callback: Optional[Callable[[], Dict[str, Any]]] = None,
     settings: Optional[Settings] = None,
     cron_scheduler: Optional[Any] = None,
-    ) -> HTTPServer:
+    ) -> ThreadingHTTPServer:
     """Start HTTP server on background thread with Basic Auth and Cron Scheduler."""
     DashboardHandler.db_path = db_path
     DashboardHandler.router_url = router_url
