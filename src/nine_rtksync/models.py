@@ -91,6 +91,35 @@ class ConnectionRecord:
         return [str(m) for m in models if m]
 
     @property
+    def egress_binding(self) -> Optional[str]:
+        """Proxy pool this connection egresses through, when one is bound.
+
+        Read-only: the binding is owned by the gateway, and 9Router keeps it in
+        ``providerSpecificData`` as ``proxyPoolId`` plus the per-connection
+        ``connectionProxyEnabled`` switch. It is surfaced here because an
+        account that shares one outbound address with every other account is
+        the state operators most want to notice, and nothing in the panel used
+        to show it.
+        """
+        specific = self.data.get("providerSpecificData")
+        if not isinstance(specific, dict):
+            return None
+        if specific.get("connectionProxyEnabled") is not True:
+            return None
+        pool = specific.get("proxyPoolId")
+        return str(pool) if pool else None
+
+    @property
+    def egress_status(self) -> str:
+        """One of: ``bound`` (own pool), ``shared`` (gateway default), ``unknown``."""
+        specific = self.data.get("providerSpecificData")
+        if not isinstance(specific, dict):
+            return "unknown"
+        if specific.get("connectionProxyEnabled") is True and specific.get("proxyPoolId"):
+            return "bound"
+        return "shared"
+
+    @property
     def expires_at_ms(self) -> Optional[int]:
         """Return normalized expiration timestamp in epoch milliseconds, if applicable."""
         val = self.data.get("expiresAt")
