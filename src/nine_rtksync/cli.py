@@ -99,6 +99,16 @@ def main():
         type=int,
         help="Porta do servidor web embutido (padrão: 9190)",
     )
+    parser.add_argument(
+        "--user",
+        type=str,
+        help="Usuário para autenticação no dashboard web (padrão: admin)",
+    )
+    parser.add_argument(
+        "--password",
+        type=str,
+        help="Senha para autenticação no dashboard web (padrão: pathbit)",
+    )
 
     args = parser.parse_args()
     settings = Settings.from_env()
@@ -113,6 +123,10 @@ def main():
         settings.enable_web = False
     if args.port:
         settings.web_port = args.port
+    if args.user:
+        settings.dashboard_user = args.user
+    if args.password:
+        settings.dashboard_password = args.password
 
     if args.status:
         print_status_table(settings)

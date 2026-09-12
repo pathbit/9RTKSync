@@ -9,6 +9,7 @@ from typing import Any, Dict, List
 
 from .combos import sync_combos
 from .config import Settings
+from .cron import CronScheduler
 from .database import get_all_connections, update_connection_data
 from .discovery import HostDiscoveryEngine
 from .models import ConnectionRecord
@@ -149,6 +150,13 @@ def run_daemon(settings: Settings):
     if not found_any:
         log_msg("DISCOVERY", f"Nenhuma credencial local pré-existente em {engine.discovery.host_home}")
 
+    # Inicializa o CronScheduler dedicado para renovação contínua de OAuth
+    cron_scheduler = CronScheduler(
+        sync_callback=engine.sync_all,
+        interval_seconds=settings.sync_interval,
+        name="9RTKSync-CronScheduler",
+    )
+
     # Inicia servidor web embutido se habilitado
     if settings.enable_web:
         try:
@@ -158,20 +166,18 @@ def run_daemon(settings: Settings):
                 db_path=settings.db_path,
                 router_url=settings.router_url,
                 sync_callback=engine.sync_all,
+                settings=settings,
+                cron_scheduler=cron_scheduler,
             )
             print(f"🌐 Dashboard Web ativo em: http://{settings.web_host}:{settings.web_port}", flush=True)
         except Exception as e:
             print(f"⚠️ Não foi possível iniciar o dashboard web na porta {settings.web_port}: {e}", flush=True)
 
-    # Primeira passada síncrona imediata
-    engine.sync_all()
+    # Inicia o agendador em background
+    cron_scheduler.start()
 
     while running:
-        for _ in range(settings.sync_interval):
-            if not running:
-                break
-            time.sleep(1)
-        if running:
-            engine.sync_all()
+        time.sleep(1)
 
+    cron_scheduler.stop()
     print("[*] 9RTKSync finalizado com sucesso.", flush=True)

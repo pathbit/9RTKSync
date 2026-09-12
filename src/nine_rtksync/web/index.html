@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>9RTKSync · 9Router Token & Connection Sync</title>
+  <title>9RTKSync · 9Router Universal Token & Connection Synchronizer</title>
   <style>
     :root {
       --bg: #0d1117;
@@ -26,7 +26,34 @@
       line-height: 1.5;
       padding: 24px;
     }
-    .container { max-width: 1100px; margin: 0 auto; }
+    .container { max-width: 1120px; margin: 0 auto; }
+    
+    /* Security Alert Banner */
+    .alert-banner {
+      display: none;
+      background: rgba(210, 153, 34, 0.15);
+      border: 1px solid var(--warning);
+      color: #e3b341;
+      padding: 12px 18px;
+      border-radius: 6px;
+      margin-bottom: 20px;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 13px;
+    }
+    .alert-banner.show { display: flex; }
+    .btn-warning {
+      background: #9e6a03;
+      color: #fff;
+      border: none;
+      padding: 6px 14px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-weight: 600;
+      font-size: 12px;
+    }
+    .btn-warning:hover { background: #b07807; }
+
     header {
       display: flex;
       justify-content: space-between;
@@ -43,22 +70,25 @@
       gap: 8px;
     }
     .brand p { font-size: 13px; color: #8b949e; }
-    .btn-sync {
-      background: #238636;
-      color: #fff;
-      border: 1px solid rgba(240, 246, 252, 0.1);
+    .header-actions { display: flex; gap: 10px; align-items: center; }
+    .btn {
       padding: 8px 16px;
       border-radius: 6px;
-      font-size: 14px;
+      font-size: 13px;
       font-weight: 600;
       cursor: pointer;
-      transition: background 0.2s;
+      border: 1px solid rgba(240, 246, 252, 0.1);
+      transition: all 0.2s;
     }
-    .btn-sync:hover { background: #2ea043; }
-    .btn-sync:disabled { opacity: 0.6; cursor: not-allowed; }
+    .btn-primary { background: #238636; color: #fff; }
+    .btn-primary:hover { background: #2ea043; }
+    .btn-secondary { background: #21262d; color: var(--text-bright); border-color: var(--border); }
+    .btn-secondary:hover { background: #30363d; }
+    .btn:disabled { opacity: 0.6; cursor: not-allowed; }
+
     .stats {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
       gap: 16px;
       margin-bottom: 24px;
     }
@@ -68,15 +98,25 @@
       border-radius: 6px;
       padding: 16px;
     }
-    .stat-card .label { font-size: 12px; color: #8b949e; text-transform: uppercase; }
-    .stat-card .value { font-size: 28px; font-weight: 700; color: var(--text-bright); margin-top: 4px; }
+    .stat-card .label { font-size: 12px; color: #8b949e; text-transform: uppercase; letter-spacing: 0.5px; }
+    .stat-card .value { font-size: 26px; font-weight: 700; color: var(--text-bright); margin-top: 4px; }
+    
+    .grid-two {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+      margin-bottom: 24px;
+    }
+    @media (max-width: 800px) { .grid-two { grid-template-columns: 1fr; } }
+
     .section-title {
-      font-size: 18px;
+      font-size: 16px;
+      font-weight: 600;
       color: var(--text-bright);
       margin-bottom: 12px;
       display: flex;
       align-items: center;
-      gap: 8px;
+      justify-content: space-between;
     }
     .card {
       background: var(--card-bg);
@@ -84,20 +124,48 @@
       border-radius: 6px;
       overflow: hidden;
       margin-bottom: 24px;
+      padding: 16px;
     }
+    .card-nopad { padding: 0; }
+
+    /* Gateway Test Box */
+    .diag-box {
+      background: #090d13;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 12px 16px;
+      margin-top: 12px;
+      font-family: var(--mono);
+      font-size: 12px;
+    }
+    .diag-row { display: flex; justify-content: space-between; padding: 4px 0; border-bottom: 1px dashed #21262d; }
+    .diag-row:last-child { border-bottom: none; }
+
+    /* Cron status block */
+    .cron-info { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+    .pulse-dot {
+      display: inline-block;
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: var(--success);
+      box-shadow: 0 0 8px var(--success);
+      margin-right: 6px;
+    }
+
     table { width: 100%; border-collapse: collapse; text-align: left; }
     th {
       background: #090d13;
-      padding: 12px 16px;
-      font-size: 12px;
+      padding: 10px 14px;
+      font-size: 11px;
       color: #8b949e;
       text-transform: uppercase;
       border-bottom: 1px solid var(--border);
     }
     td {
-      padding: 12px 16px;
+      padding: 12px 14px;
       border-bottom: 1px solid var(--border);
-      font-size: 14px;
+      font-size: 13px;
     }
     tr:last-child td { border-bottom: none; }
     .badge {
@@ -111,23 +179,69 @@
     .badge-ok { background: rgba(63, 185, 80, 0.2); color: var(--success); }
     .badge-warn { background: rgba(210, 153, 34, 0.2); color: var(--warning); }
     .badge-err { background: rgba(248, 81, 73, 0.2); color: var(--danger); }
-    .badge-provider { background: #21262d; color: var(--text-bright); font-family: var(--mono); font-size: 12px; }
+    .badge-provider { background: #21262d; color: var(--text-bright); font-family: var(--mono); font-size: 11px; }
     .mono { font-family: var(--mono); font-size: 12px; }
-    footer { text-align: center; color: #8b949e; font-size: 12px; margin-top: 32px; }
+
+    /* Modal */
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      top: 0; left: 0; width: 100%; height: 100%;
+      background: rgba(0,0,0,0.7);
+      backdrop-filter: blur(2px);
+      z-index: 1000;
+      align-items: center;
+      justify-content: center;
+    }
+    .modal-overlay.open { display: flex; }
+    .modal {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      width: 420px;
+      max-width: 90%;
+      padding: 24px;
+    }
+    .modal h2 { font-size: 18px; margin-bottom: 16px; color: var(--text-bright); }
+    .form-group { margin-bottom: 14px; }
+    .form-group label { display: block; font-size: 12px; color: #8b949e; margin-bottom: 4px; }
+    .form-control {
+      width: 100%;
+      background: #090d13;
+      border: 1px solid var(--border);
+      color: #fff;
+      padding: 8px 12px;
+      border-radius: 6px;
+      font-size: 14px;
+    }
+    .modal-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 20px; }
+
+    footer { text-align: center; color: #8b949e; font-size: 12px; margin-top: 32px; padding-bottom: 20px; }
   </style>
 </head>
 <body>
   <div class="container">
+    
+    <!-- Security Warning Banner -->
+    <div id="alertDefaultPass" class="alert-banner">
+      <div>
+        ⚠️ <strong>Atenção de Segurança:</strong> Você está utilizando as credenciais padrão de fábrica (<code>admin</code> / <code>pathbit</code>). Recomenda-se alterar a senha para proteger o dashboard.
+      </div>
+      <button class="btn-warning" onclick="openPasswordModal()">Alterar Credenciais</button>
+    </div>
+
     <header>
       <div class="brand">
         <h1>⚡ 9RTKSync</h1>
-        <p>9Router Universal Token & Connection Synchronizer</p>
+        <p>9Router Universal Token & Connection Synchronizer (<a href="https://github.com/decolua/9router" target="_blank" style="color:var(--accent);text-decoration:none;">9Router</a>)</p>
       </div>
-      <div>
-        <button id="syncBtn" class="btn-sync" onclick="triggerSync()">Sincronizar Agora</button>
+      <div class="header-actions">
+        <button class="btn btn-secondary" onclick="openPasswordModal()">🔐 Acesso</button>
+        <button id="syncBtn" class="btn btn-primary" onclick="triggerSync()">🔄 Sincronizar Agora</button>
       </div>
     </header>
 
+    <!-- Top Stats -->
     <div class="stats">
       <div class="stat-card">
         <div class="label">Total de Conexões</div>
@@ -135,7 +249,7 @@
       </div>
       <div class="stat-card">
         <div class="label">Contas OAuth Ativas</div>
-        <div class="value" id="statOAuth">-</div>
+        <div class="value" id="statOAuth" style="color:var(--accent);">-</div>
       </div>
       <div class="stat-card">
         <div class="label">Provedores API Key</div>
@@ -143,12 +257,55 @@
       </div>
       <div class="stat-card">
         <div class="label">Combos Registrados</div>
-        <div class="value" id="statCombos">-</div>
+        <div class="value" id="statCombos" style="color:var(--success);">-</div>
       </div>
     </div>
 
-    <div class="section-title">🔌 Conexões de Provedores</div>
-    <div class="card">
+    <!-- Diagnostic and Cron Row -->
+    <div class="grid-two">
+      
+      <!-- Card Gateway Connection Test -->
+      <div class="card">
+        <div class="section-title">
+          <span>🔌 Conexão com Gateway 9Router</span>
+          <button id="testGwBtn" class="btn btn-secondary" style="font-size:11px;padding:4px 10px;" onclick="testGateway()">Testar Conexão</button>
+        </div>
+        <p style="font-size:13px;color:#8b949e;">Valida a resposta HTTP, latência e acesso ao banco de dados SQLite compartilhado.</p>
+        <div id="gwDiagBox" class="diag-box">
+          <div class="diag-row"><span>Gateway URL:</span><span id="gwUrl">-</span></div>
+          <div class="diag-row"><span>Status Gateway:</span><span id="gwStatus" style="color:#8b949e;">Aguardando teste...</span></div>
+          <div class="diag-row"><span>Latência HTTP:</span><span id="gwLatency">-</span></div>
+          <div class="diag-row"><span>Banco SQLite:</span><span id="gwDb">-</span></div>
+          <div class="diag-row"><span>Diagnóstico:</span><span id="gwMsg" style="color:#8b949e;">Clique em 'Testar Conexão'</span></div>
+        </div>
+      </div>
+
+      <!-- Card Cron Scheduler -->
+      <div class="card">
+        <div class="section-title">
+          <span>⏰ Cron Scheduler (Renovação Contínua)</span>
+          <button id="cronRunBtn" class="btn btn-primary" style="font-size:11px;padding:4px 10px;" onclick="runCronNow()">Executar Cron Agora</button>
+        </div>
+        <div class="cron-info">
+          <div style="font-size:13px;">
+            <span class="pulse-dot"></span> <strong id="cronActiveLabel">Ativo</strong>
+            <span style="color:#8b949e;margin-left:4px;">(a cada <span id="cronInterval">300</span>s)</span>
+          </div>
+          <span style="font-size:11px;color:#8b949e;">Total ciclos: <strong id="cronTotalRuns">0</strong></span>
+        </div>
+        <div class="diag-box">
+          <div class="diag-row"><span>Última Execução:</span><span id="cronLastRun">-</span></div>
+          <div class="diag-row"><span>Próxima Execução:</span><span id="cronNextRun">-</span></div>
+          <div class="diag-row"><span>Tokens Renovados:</span><span id="cronTotalRenewals" style="color:var(--success);">0</span></div>
+          <div class="diag-row"><span>Último Resultado:</span><span id="cronLastResult" style="color:var(--text-bright);">-</span></div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Connections Table -->
+    <div class="section-title">🔌 Conexões Monitoradas (OAuth, API Key e Provedores Locais)</div>
+    <div class="card card-nopad">
       <table>
         <thead>
           <tr>
@@ -160,13 +317,14 @@
           </tr>
         </thead>
         <tbody id="connsTableBody">
-          <tr><td colspan="5" style="text-align:center;color:#8b949e;">Carregando dados do 9Router...</td></tr>
+          <tr><td colspan="5" style="text-align:center;color:#8b949e;">Carregando conexões do banco de dados...</td></tr>
         </tbody>
       </table>
     </div>
 
+    <!-- Combos Table -->
     <div class="section-title">🔀 Combos de Resiliência e Fallback</div>
-    <div class="card">
+    <div class="card card-nopad">
       <table>
         <thead>
           <tr>
@@ -177,40 +335,118 @@
           </tr>
         </thead>
         <tbody id="combosTableBody">
-          <tr><td colspan="4" style="text-align:center;color:#8b949e;">Carregando combos...</td></tr>
+          <tr><td colspan="4" style="text-align:center;color:#8b949e;">Carregando combos cadastrados...</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Cron History Table -->
+    <div class="section-title">📋 Histórico de Ciclos do Cron</div>
+    <div class="card card-nopad">
+      <table>
+        <thead>
+          <tr>
+            <th>Data e Hora (UTC)</th>
+            <th>Disparo</th>
+            <th>Duração</th>
+            <th>Contas Inspecionadas</th>
+            <th>OAuth Renovados</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody id="cronHistoryBody">
+          <tr><td colspan="6" style="text-align:center;color:#8b949e;">Nenhum ciclo executado ainda.</td></tr>
         </tbody>
       </table>
     </div>
 
     <footer>
-      9RTKSync · Desenvolvido para resiliência contínua no 9Router · PathBit Engineering
+      9RTKSync · 9Router Universal Token & Connection Synchronizer · <a href="https://pathbit.co/" target="_blank" style="color:#8b949e;text-decoration:none;">Desenvolvido com ❤️ pela Pathbit</a>
     </footer>
   </div>
 
+  <!-- Password Change Modal -->
+  <div id="passwordModal" class="modal-overlay">
+    <div class="modal">
+      <h2>🔐 Credenciais do Dashboard</h2>
+      <p style="font-size:13px;color:#8b949e;margin-bottom:16px;">
+        Altere as credenciais de autenticação HTTP Basic Auth do seu dashboard.
+      </p>
+      <div class="form-group">
+        <label>Usuário de Acesso</label>
+        <input type="text" id="newUsernameInput" class="form-control" value="admin">
+      </div>
+      <div class="form-group">
+        <label>Nova Senha</label>
+        <input type="password" id="newPasswordInput" class="form-control" placeholder="Mínimo 4 caracteres">
+      </div>
+      <div class="form-group">
+        <label>Confirmar Nova Senha</label>
+        <input type="password" id="confirmPasswordInput" class="form-control" placeholder="Repita a senha">
+      </div>
+      <div id="modalMsg" style="font-size:12px;margin-top:8px;"></div>
+      <div class="modal-actions">
+        <button class="btn btn-secondary" onclick="closePasswordModal()">Cancelar</button>
+        <button class="btn btn-primary" onclick="submitPasswordChange()">Salvar Credenciais</button>
+      </div>
+    </div>
+  </div>
+
   <script>
+    let currentData = {};
+
     async function loadStatus() {
       try {
         const res = await fetch('/api/status');
-        const data = await res.json();
-        renderDashboard(data);
+        if (res.status === 401) {
+          console.warn('Dashboard requer autenticação HTTP Basic.');
+          return;
+        }
+        currentData = await res.json();
+        renderDashboard(currentData);
       } catch (err) {
         console.error('Erro ao carregar status:', err);
       }
     }
 
     function renderDashboard(data) {
+      // Alerta de senha padrao
+      const alertBanner = document.getElementById('alertDefaultPass');
+      if (data.isDefaultPassword) {
+        alertBanner.classList.add('show');
+      } else {
+        alertBanner.classList.remove('show');
+      }
+
+      document.getElementById('newUsernameInput').value = data.currentUser || 'admin';
+      document.getElementById('gwUrl').innerText = data.routerUrl || 'http://127.0.0.1:20128';
+
+      // Stats
       const conns = data.connections || [];
       const combos = data.combos || [];
-
       document.getElementById('statTotal').innerText = conns.length;
       document.getElementById('statOAuth').innerText = conns.filter(c => c.isOAuth).length;
       document.getElementById('statApiKeys').innerText = conns.filter(c => c.hasApiKey).length;
       document.getElementById('statCombos').innerText = combos.length;
 
-      // Render Conns
+      // Cron status
+      const cron = data.cron || {};
+      document.getElementById('cronInterval').innerText = cron.intervalSeconds || 300;
+      document.getElementById('cronTotalRuns').innerText = cron.totalRuns || 0;
+      document.getElementById('cronTotalRenewals').innerText = cron.totalRenewals || 0;
+      document.getElementById('cronLastRun').innerText = cron.lastRunAt || 'Nenhum ainda';
+      document.getElementById('cronNextRun').innerText = cron.nextRunAt || 'Calculando...';
+      
+      if (cron.lastResult) {
+        const lr = cron.lastResult;
+        document.getElementById('cronLastResult').innerText = 
+          `${lr.totalInspected} avaliadas · ${lr.refreshedCount} renovadas (${lr.durationMs}ms)`;
+      }
+
+      // Conexoes
       const connsBody = document.getElementById('connsTableBody');
       if (conns.length === 0) {
-        connsBody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:#8b949e;">Nenhuma conexão encontrada.</td></tr>';
+        connsBody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:#8b949e;">Nenhuma conexão registrada.</td></tr>';
       } else {
         connsBody.innerHTML = conns.map(c => {
           let badgeClass = 'badge-ok';
@@ -245,7 +481,7 @@
         }).join('');
       }
 
-      // Render Combos
+      // Combos
       const combosBody = document.getElementById('combosTableBody');
       if (combos.length === 0) {
         combosBody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:#8b949e;">Nenhum combo encontrado.</td></tr>';
@@ -262,6 +498,64 @@
           `;
         }).join('');
       }
+
+      // Cron History
+      const histBody = document.getElementById('cronHistoryBody');
+      const history = cron.history || [];
+      if (history.length === 0) {
+        histBody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:#8b949e;">Nenhum ciclo histórico registrado.</td></tr>';
+      } else {
+        histBody.innerHTML = history.map(h => `
+          <tr>
+            <td class="mono" style="font-size:11px;">${h.timestamp}</td>
+            <td><span class="badge badge-provider">${h.reason}</span></td>
+            <td class="mono">${h.durationMs}ms</td>
+            <td>${h.totalInspected} contas</td>
+            <td style="color:${h.refreshedCount > 0 ? 'var(--success)' : 'inherit'};"><strong>${h.refreshedCount}</strong></td>
+            <td><span class="badge ${h.success ? 'badge-ok' : 'badge-err'}">${h.success ? 'SUCESSO' : 'FALHA'}</span></td>
+          </tr>
+        `).join('');
+      }
+    }
+
+    async function testGateway() {
+      const btn = document.getElementById('testGwBtn');
+      btn.disabled = true;
+      btn.innerText = 'Testando...';
+      try {
+        const res = await fetch('/api/test-gateway', { method: 'POST' });
+        const diag = await res.json();
+        
+        document.getElementById('gwStatus').innerHTML = diag.gatewayStatus === 'online' 
+          ? `<span style="color:var(--success);font-weight:bold;">ONLINE (HTTP ${diag.httpStatusCode})</span>`
+          : `<span style="color:var(--danger);font-weight:bold;">OFFLINE (${diag.gatewayError || 'Erro'})</span>`;
+        document.getElementById('gwLatency').innerText = `${diag.latencyMs} ms`;
+        document.getElementById('gwDb').innerText = diag.dbStatus === 'ok' 
+          ? `Operacional (${diag.connectionsCount} conexões, ${diag.combosCount} combos)`
+          : 'Inacessível / Não encontrado';
+        document.getElementById('gwMsg').innerText = diag.message;
+        document.getElementById('gwMsg').style.color = diag.success ? 'var(--success)' : 'var(--danger)';
+      } catch (err) {
+        alert('Erro ao testar gateway: ' + err);
+      } finally {
+        btn.disabled = false;
+        btn.innerText = 'Testar Conexão';
+      }
+    }
+
+    async function runCronNow() {
+      const btn = document.getElementById('cronRunBtn');
+      btn.disabled = true;
+      btn.innerText = 'Executando...';
+      try {
+        await fetch('/api/cron-run', { method: 'POST' });
+        await loadStatus();
+      } catch (err) {
+        alert('Erro ao executar cron: ' + err);
+      } finally {
+        btn.disabled = false;
+        btn.innerText = 'Executar Cron Agora';
+      }
     }
 
     async function triggerSync() {
@@ -275,12 +569,65 @@
         alert('Erro ao sincronizar: ' + err);
       } finally {
         btn.disabled = false;
-        btn.innerText = 'Sincronizar Agora';
+        btn.innerText = '🔄 Sincronizar Agora';
       }
     }
 
+    function openPasswordModal() {
+      document.getElementById('passwordModal').classList.add('open');
+      document.getElementById('modalMsg').innerText = '';
+    }
+
+    function closePasswordModal() {
+      document.getElementById('passwordModal').classList.remove('open');
+    }
+
+    async function submitPasswordChange() {
+      const user = document.getElementById('newUsernameInput').value.trim();
+      const pass = document.getElementById('newPasswordInput').value;
+      const conf = document.getElementById('confirmPasswordInput').value;
+      const msg = document.getElementById('modalMsg');
+
+      if (!pass || pass.length < 4) {
+        msg.innerText = '❌ A senha deve conter pelo menos 4 caracteres.';
+        msg.style.color = 'var(--danger)';
+        return;
+      }
+      if (pass !== conf) {
+        msg.innerText = '❌ As senhas não conferem.';
+        msg.style.color = 'var(--danger)';
+        return;
+      }
+
+      try {
+        const res = await fetch('/api/change-password', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ newUser: user, newPassword: pass })
+        });
+        const d = await res.json();
+        if (d.success) {
+          msg.innerText = '✅ ' + d.message;
+          msg.style.color = 'var(--success)';
+          setTimeout(() => {
+            closePasswordModal();
+            loadStatus();
+          }, 1500);
+        } else {
+          msg.innerText = '❌ ' + (d.error || 'Erro ao alterar credenciais');
+          msg.style.color = 'var(--danger)';
+        }
+      } catch (e) {
+        msg.innerText = '❌ ' + e.message;
+        msg.style.color = 'var(--danger)';
+      }
+    }
+
+    // Inicializacao e Polling a cada 15 segundos
     loadStatus();
     setInterval(loadStatus, 15000);
+    // Auto teste do gateway na primeira carga
+    setTimeout(testGateway, 1000);
   </script>
 </body>
 </html>

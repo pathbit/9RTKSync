@@ -23,6 +23,53 @@ class Settings:
     router_url: str = "http://127.0.0.1:20128"
     module: str = "all"
     credential_paths: List[str] = None
+    dashboard_user: str = "admin"
+    dashboard_password: str = "pathbit"
+    cron_interval: int = 300
+
+    def get_auth_file_path(self) -> str:
+        """Retorna o caminho para persistência de credenciais do dashboard."""
+        base_dir = os.environ.get("DATA_DIR", "")
+        if not base_dir and self.db_path:
+            base_dir = os.path.dirname(self.db_path)
+        if not base_dir or not os.path.exists(base_dir):
+            base_dir = os.path.expanduser("~")
+        return os.path.join(base_dir, ".dashboard_auth.json")
+
+    def get_auth_credentials(self) -> tuple[str, str]:
+        """Obtém credenciais ativas do dashboard (arquivo salvo -> env -> padrão)."""
+        auth_file = self.get_auth_file_path()
+        if os.path.exists(auth_file):
+            try:
+                import json
+                with open(auth_file, "r", encoding="utf-8") as f:
+                    data = json.load(f)
+                u = data.get("user") or self.dashboard_user
+                p = data.get("password") or self.dashboard_password
+                if u and p:
+                    return str(u), str(p)
+            except Exception:
+                pass
+        return self.dashboard_user, self.dashboard_password
+
+    def is_default_password(self) -> bool:
+        """Indica se a senha em uso ainda é a padrão de fábrica (pathbit)."""
+        _, p = self.get_auth_credentials()
+        return p == "pathbit"
+
+    def update_auth_credentials(self, user: str, new_pass: str) -> bool:
+        """Salva novas credenciais de acesso no arquivo seguro do dashboard."""
+        auth_file = self.get_auth_file_path()
+        try:
+            import json
+            payload = {"user": user.strip() or "admin", "password": new_pass.strip()}
+            with open(auth_file, "w", encoding="utf-8") as f:
+                json.dump(payload, f)
+            self.dashboard_user = payload["user"]
+            self.dashboard_password = payload["password"]
+            return True
+        except Exception:
+            return False
 
     @classmethod
     def from_env(cls) -> "Settings":
@@ -63,10 +110,14 @@ class Settings:
             if not db_path:
                 db_path = candidate_dbs[0]
 
+        d_user = os.environ.get("DASHBOARD_USER", "admin")
+        d_pass = os.environ.get("DASHBOARD_PASSWORD", "pathbit")
+        sync_int = int(os.environ.get("SYNC_INTERVAL", "300"))
+
         return cls(
             db_path=db_path,
             host_home=host_home,
-            sync_interval=int(os.environ.get("SYNC_INTERVAL", "300")),
+            sync_interval=sync_int,
             refresh_margin=int(os.environ.get("REFRESH_MARGIN", "900")),
             enable_web=os.environ.get("ENABLE_WEB_DASHBOARD", "1") not in ("0", "false", "no"),
             web_host=os.environ.get("WEB_HOST", "0.0.0.0"),
@@ -74,4 +125,7 @@ class Settings:
             router_url=os.environ.get("ROUTER_URL", "http://127.0.0.1:20128"),
             module=os.environ.get("MODULE", "all"),
             credential_paths=valid_paths,
+            dashboard_user=d_user,
+            dashboard_password=d_pass,
+            cron_interval=sync_int,
         )
