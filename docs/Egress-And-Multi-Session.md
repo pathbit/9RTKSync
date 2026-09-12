@@ -7,78 +7,97 @@ is not the number of sessions — it is **how they look from the outside**. When
 gateway fans many accounts out through a single machine, every one of those
 accounts shows the same source address, and the pattern is what draws attention.
 
-This page documents what the gateway already gives you to control that, and what
-the synchronizer shows about it. Every schema detail below was read from the running `decolua/9router` and
-`diegosouzapw/omniroute` images — each section names the gateway it describes.
-Nothing here is a claim about any provider's policy, which we cannot verify and
-do not restate.
-
----
-
-## What OmniRoute already models
-
-Three tables, all present in the shipped schema:
-
-| Table | What it holds |
-| --- | --- |
-| `proxy_registry` | The egress endpoints: `host`, `port`, `username`, `password`, `region`, `country_code`, plus measured `latency_ms`, `quality_score`, `anonymity` and `google_access`. |
-| `proxy_assignments` | The binding: `proxy_id`, `scope`, `scope_id`, `position`. Unique on `(scope, scope_id, proxy_id)`. |
-| `proxy_scope_rotation` | Per scope: `strategy`, `cursor`, `sticky_window_minutes`, `rotated_at`. |
-
-`scope` takes three values in the code: **`global`**, **`provider`** and
-**`account`**. Two more switches live on the connection row itself:
-`provider_connections.proxy_enabled` and `per_key_proxy_enabled`.
-
-### The property that matters
-
-The selector short-circuits when a scope resolves to exactly one proxy — with a
-single entry it is returned directly, without consulting rotation at all.
-
-That gives you the arrangement you want with no extra machinery:
-
-> **One proxy assigned at `scope='account'` for a given connection id = that
-> account always egresses from that address.**
-
-Where rotation *is* involved, `sticky_window_minutes` keeps the same choice for
-a window; the stored default when a scope row is created is **30 minutes**.
-Rotation is the opposite of what you want per account: it makes one account
-appear from several addresses over time.
-
-### How to set it up
-
-Through OmniRoute's own screens and API — the synchronizer never writes here:
-
-1. Register each egress under **Settings → Proxies** (`/api/settings/proxies`).
-2. Bind one to the connection, choosing the **account** scope, so the assignment
-   lands with `scope='account'` and `scope_id` equal to the connection id.
-3. Turn on `proxy_enabled` for that connection.
-4. Leave exactly **one** proxy in that scope. One entry means no rotation.
-
-Verification, without leaving the box:
-
-```sql
-SELECT c.name,
-       COALESCE(NULLIF(r.name,''), r.host || ':' || r.port) AS egress
-FROM provider_connections c
-LEFT JOIN proxy_assignments a ON a.scope = 'account' AND a.scope_id = c.id
-LEFT JOIN proxy_registry    r ON r.id = a.proxy_id
-ORDER BY c.name;
-```
-
-Any row with `egress` NULL shares the host's address with every other such row.
+This page documents what **9Router** already gives you to control that, and what
+the synchronizer shows about it. Every field below was read from the running
+`decolua/9router` image and from its source — `src/lib/network/connectionProxy.js`
+and `open-sse/utils/proxyFetch.js`. Nothing here is a claim about any provider's
+policy, which we cannot verify and do not restate.
 
 ---
 
 ## What 9Router models
 
-9Router keeps the pools in the `proxyPools` table and the binding **inside the
-connection**, under `providerSpecificData`:
+The egress endpoints live in the **`proxyPools`** table and the binding lives
+**inside the connection**, under `providerSpecificData`:
 
-- `proxyPoolId` — which pool this connection egresses through;
-- `connectionProxyEnabled` — the per-connection switch, which must be `true`.
+| Field | What it does |
+| --- | --- |
+| `proxyPoolId` | Which pool this connection egresses through. The literal `"__none__"` means *explicitly disabled*. |
+| `connectionProxyEnabled` | The legacy per-connection switch. |
+| `connectionProxyUrl` | The legacy per-connection address, used when no pool resolves. |
+| `connectionNoProxy` | Hosts to reach directly, bypassing the proxy. |
 
-Same principle, different storage: the binding belongs to the connection rather
-than to a separate assignment table.
+### How the address is actually chosen
+
+`resolveConnectionProxyConfig()` decides, in this order:
+
+1. **`proxyPoolId` set and the pool is usable** — the pool row must have
+   `isActive === true` *and* a non-empty `proxyUrl`. The pool's URL wins.
+2. **Otherwise it falls back to the legacy fields** on the connection
+   (`connectionProxyEnabled` + `connectionProxyUrl`).
+3. **Otherwise no proxy at all** — the request leaves through the host's own
+   address.
+
+Two consequences worth knowing before you rely on this:
+
+> **A pool that is inactive, deleted or has an empty `proxyUrl` does not raise
+> an error.** The connection silently falls back to the legacy fields, and if
+> those are empty, that account goes back to sharing the host's address. Binding
+> a pool is not enough — the pool has to be usable.
+
+> **Pools of type `vercel`, `cloudflare` or `deno` are not HTTP proxies.** They
+> are relays applied by rewriting the base URL, and the resolver deliberately
+> returns `connectionProxyEnabled: false` for them, exposing the address as
+> `vercelRelayUrl` instead. It takes precedence over the proxy path at request
+> time.
+
+### `strictProxy`: the difference between isolation and best effort
+
+Each pool carries a `strictProxy` flag, and it decides what happens when the
+proxy fails:
+
+- **`strictProxy: true`** — the request fails: `Proxy required but failed`.
+- **`strictProxy` unset or false** — `proxyFetch` logs a warning and **retries
+  the request directly**, without the proxy.
+
+That fallback is the one that undoes the whole arrangement: the account you
+isolated goes out through the host's address at the first network hiccup, and
+the only trace is a `console.warn` in the gateway log. **If the point of the
+binding is to keep accounts apart, set `strictProxy` on the pool.**
+
+### How to set it up
+
+Through 9Router's own screens and API — the synchronizer never writes here:
+
+1. Register each egress as a pool, with its `proxyUrl` and `isActive` on.
+2. Set `strictProxy` on the pool, unless you would rather leak than fail.
+3. On the connection, set `providerSpecificData.proxyPoolId` to that pool.
+4. Give each account its **own** pool. Two accounts on one pool share an
+   address, which is the situation you are trying to leave.
+
+Verification, without leaving the box:
+
+```sql
+SELECT c.name AS account,
+       CASE
+         WHEN COALESCE(NULLIF(json_extract(c.data,'$.providerSpecificData.proxyPoolId'),''),'__none__') = '__none__'
+           THEN CASE WHEN json_extract(c.data,'$.providerSpecificData.connectionProxyEnabled') = 1
+                      AND NULLIF(json_extract(c.data,'$.providerSpecificData.connectionProxyUrl'),'') IS NOT NULL
+                     THEN 'legacy (URL on the connection)'
+                     ELSE 'SHARED (leaves through the host)' END
+         WHEN p.id IS NULL   THEN 'pool missing -> SHARED'
+         WHEN p.isActive = 0 THEN 'pool inactive -> falls back to legacy'
+         WHEN NULLIF(json_extract(p.data,'$.proxyUrl'),'') IS NULL
+                             THEN 'pool has no URL -> falls back to legacy'
+         ELSE 'bound'
+       END AS situation
+FROM providerConnections c
+LEFT JOIN proxyPools p
+       ON p.id = json_extract(c.data,'$.providerSpecificData.proxyPoolId')
+ORDER BY c.name;
+```
+
+Every row reading `SHARED` leaves through the same address as the others.
 
 ---
 
@@ -86,15 +105,26 @@ than to a separate assignment table.
 
 The panel surfaces the binding **read-only**, per connection:
 
-- **bound** — the account has its own egress, and the panel names it;
-- **shared** — no binding; this account leaves through the same address as the
-  rest;
-- **unknown** — the installation is older than the proxy tables.
+- **own egress** — the account has its own pool, and the panel names it;
+- **shares the gateway address with N accounts** — no usable binding. The
+  warning only appears from the **second** such account onwards: one account
+  alone is the only owner of that address, and there is nothing to flag;
+- **egress unknown** — the installation predates the proxy fields.
 
-The synchronizer never creates, edits or deletes a proxy, an assignment or a
-rotation strategy. It reads, and it tells you what it found. Ownership of the
-routing stays with the gateway, which is the only component that can actually
-apply it to a request.
+The synchronizer never creates, edits or deletes a pool or a binding. It reads,
+and it tells you what it found. Ownership of the routing stays with the gateway,
+the only component that can actually apply it to a request.
+
+---
+
+## The sibling gateway, for comparison
+
+[OminiRTkSync](https://github.com/pathbit/OminiRTkSync) documents the same idea
+for OmniRoute, which stores it differently: a `proxy_registry` of endpoints,
+a `proxy_assignments` table binding them by `scope` (`global`, `provider`,
+`account`) and a `proxy_scope_rotation` row per scope. There, a single proxy at
+`scope='account'` pins that account's address. Same principle, different
+storage — see that repository's copy of this page.
 
 ---
 
@@ -109,12 +139,11 @@ the binding above.
   accounts on one gateway, they all still share it. An exit node alone does not
   separate accounts.
 - **Several exit nodes** do separate them, but only if each account is bound to
-  a different one — and the binding is exactly the `scope='account'` assignment
-  described above. Tailscale supplies the addresses; OmniRoute decides which
-  account uses which.
+  a different one — and the binding is exactly the `proxyPoolId` above.
+  Tailscale supplies the addresses; 9Router decides which account uses which.
 - `--advertise-exit-node` plus `--exit-node` are per-host settings. To route
-  per-account you still need one HTTP/SOCKS endpoint per node, registered in
-  `proxy_registry` like any other egress.
+  per-account you still need one HTTP/SOCKS endpoint per node, registered as its
+  own pool like any other egress.
 
 The same holds for any provider of addresses — a VPS, a residential proxy, a
 second uplink. The part that separates accounts is the per-account binding, not
@@ -124,12 +153,11 @@ the technology that produced the address.
 
 - One egress per account when several accounts of the same provider live on one
   gateway.
+- `strictProxy` on, so a failing proxy fails loudly instead of leaking.
 - Prefer **stability over rotation** for a named account: an account whose
   address changes every few minutes looks less like a person, not more.
 - Keep egress and account in the same region when the provider is
-  region-sensitive; `proxy_registry.country_code` is there for that.
-- Check `google_access` on the registry row before binding a Google-backed
-  connection to it — the column exists because not every egress can reach it.
+  region-sensitive.
 
 ---
 
@@ -140,55 +168,92 @@ problema não é a quantidade de sessões, e sim **como elas aparecem de fora**:
 quando um gateway distribui várias contas por uma única máquina, todas saem pelo
 mesmo endereço, e é esse padrão que chama atenção.
 
-Esta página documenta o que o gateway **já oferece** para controlar isso e o que
-o sincronizador mostra a respeito. Cada detalhe de schema foi lido das imagens `decolua/9router` e
-`diegosouzapw/omniroute` em execução — cada seção diz de qual gateway trata.
-Não há aqui nenhuma afirmação sobre política de fornecedor, que não temos como
-verificar.
-
-## O que o OmniRoute já modela
-
-- `proxy_registry` — os endereços de saída (host, porta, usuário, senha, região,
-  `country_code`, `google_access`, latência e pontuação de qualidade).
-- `proxy_assignments` — o vínculo: `proxy_id`, `scope`, `scope_id`, `position`.
-- `proxy_scope_rotation` — por escopo: `strategy`, `cursor`,
-  `sticky_window_minutes`, `rotated_at`.
-
-Os escopos no código são **`global`**, **`provider`** e **`account`**. Na própria
-linha da conexão existem ainda `proxy_enabled` e `per_key_proxy_enabled`.
-
-**A propriedade que importa:** quando um escopo resolve para exatamente um
-proxy, o seletor devolve esse proxy direto, sem consultar rotação. Ou seja:
-
-> **Um proxy vinculado em `scope='account'` para o id de uma conexão = aquela
-> conta sai sempre pelo mesmo endereço.**
-
-Onde há rotação, `sticky_window_minutes` mantém a escolha por uma janela — o
-padrão gravado ao criar a linha do escopo é de **30 minutos**. Rotação é o
-oposto do que se quer por conta: faz uma conta aparecer de vários endereços.
-
-**Como configurar** (pelas telas e pela API do próprio OmniRoute; o
-sincronizador não escreve nada disso):
-
-1. Cadastre cada saída em **Settings → Proxies**.
-2. Vincule uma à conexão escolhendo o escopo **account**.
-3. Ligue `proxy_enabled` naquela conexão.
-4. Deixe **um único** proxy nesse escopo — um só significa sem rotação.
+Esta página documenta o que o **9Router** já oferece para controlar isso e o que
+o sincronizador mostra a respeito. Cada campo foi lido da imagem
+`decolua/9router` em execução e do seu código — `src/lib/network/connectionProxy.js`
+e `open-sse/utils/proxyFetch.js`. Não há aqui nenhuma afirmação sobre política de
+fornecedor, que não temos como verificar.
 
 ## O que o 9Router modela
 
-Os pools ficam em `proxyPools` e o vínculo vive **dentro da conexão**, em
-`providerSpecificData`: `proxyPoolId` diz por qual pool ela sai, e
-`connectionProxyEnabled` precisa estar `true`. Mesmo princípio, armazenamento
-diferente.
+As saídas ficam na tabela **`proxyPools`** e o vínculo vive **dentro da
+conexão**, em `providerSpecificData`:
+
+| Campo | Para que serve |
+| --- | --- |
+| `proxyPoolId` | Por qual pool a conexão sai. O literal `"__none__"` significa *desativado explicitamente*. |
+| `connectionProxyEnabled` | O interruptor legado, por conexão. |
+| `connectionProxyUrl` | O endereço legado, usado quando nenhum pool resolve. |
+| `connectionNoProxy` | Destinos a alcançar direto, sem passar pelo proxy. |
+
+### Como o endereço é escolhido de fato
+
+O `resolveConnectionProxyConfig()` decide nesta ordem:
+
+1. **`proxyPoolId` definido e pool utilizável** — a linha do pool precisa ter
+   `isActive === true` **e** um `proxyUrl` não vazio. Vence a URL do pool.
+2. **Senão, cai nos campos legados** da conexão (`connectionProxyEnabled` +
+   `connectionProxyUrl`).
+3. **Senão, sem proxy nenhum** — a requisição sai pelo endereço do próprio host.
+
+Duas consequências que vale conhecer antes de confiar nisso:
+
+> **Um pool inativo, apagado ou com `proxyUrl` vazio não gera erro.** A conexão
+> cai silenciosamente para os campos legados e, se eles estiverem vazios, aquela
+> conta volta a dividir o endereço do host. Vincular um pool não basta — ele
+> precisa estar utilizável.
+
+> **Pools do tipo `vercel`, `cloudflare` ou `deno` não são proxy HTTP.** São
+> relays aplicados por reescrita da URL base, e o resolvedor devolve
+> deliberadamente `connectionProxyEnabled: false` para eles, expondo o endereço
+> como `vercelRelayUrl`. Na hora do envio, o relay tem precedência sobre o
+> caminho de proxy.
+
+### `strictProxy`: a diferença entre isolamento e melhor esforço
+
+Cada pool carrega a bandeira `strictProxy`, e ela decide o que acontece quando o
+proxy falha:
+
+- **`strictProxy: true`** — a requisição falha: `Proxy required but failed`.
+- **`strictProxy` ausente ou falso** — o `proxyFetch` registra um aviso e
+  **refaz a requisição direto**, sem o proxy.
+
+Essa queda para conexão direta é o que desfaz o arranjo inteiro: a conta que
+você isolou sai pelo endereço do host no primeiro soluço de rede, e o único
+rastro é um `console.warn` no log do gateway. **Se o propósito do vínculo é
+manter as contas separadas, ligue `strictProxy` no pool.**
+
+### Como configurar
+
+Pelas telas e pela API do próprio 9Router; o sincronizador não escreve nada
+disso:
+
+1. Cadastre cada saída como um pool, com `proxyUrl` preenchido e `isActive`.
+2. Ligue `strictProxy` no pool, a menos que prefira vazar a falhar.
+3. Na conexão, aponte `providerSpecificData.proxyPoolId` para esse pool.
+4. Dê a cada conta o **seu próprio** pool. Duas contas no mesmo pool dividem
+   endereço, que é justamente a situação da qual se quer sair.
+
+A consulta de verificação está na seção em inglês, acima — vale igual.
 
 ## O que o painel mostra
 
-Somente leitura, por conexão: **vinculada** (com o nome da saída),
-**compartilhada** (sai junto com as outras) ou **desconhecida** (instalação
-anterior às tabelas de proxy). O sincronizador nunca cria, edita nem apaga
-proxy, vínculo ou estratégia — quem manda no roteamento é o gateway, o único que
-consegue de fato aplicá-lo a uma requisição.
+Somente leitura, por conexão: **saída própria** (com o nome do pool), **divide o
+endereço do gateway com N contas** (sem vínculo utilizável — e o aviso só
+aparece a partir da segunda conta nessa situação, porque uma sozinha é a única
+dona daquele endereço) ou **saída desconhecida** (instalação anterior aos campos
+de proxy). O sincronizador nunca cria, edita nem apaga pool ou vínculo — quem
+manda no roteamento é o gateway, o único que consegue de fato aplicá-lo a uma
+requisição.
+
+## O gateway irmão, para comparação
+
+O [OminiRTkSync](https://github.com/pathbit/OminiRTkSync) documenta a mesma
+ideia para o OmniRoute, que a guarda de outro jeito: um `proxy_registry` de
+endereços, uma tabela `proxy_assignments` que os vincula por `scope` (`global`,
+`provider`, `account`) e uma linha de `proxy_scope_rotation` por escopo. Lá, um
+único proxy em `scope='account'` fixa o endereço daquela conta. Mesmo princípio,
+armazenamento diferente.
 
 ## Tailscale: o que resolve e o que não resolve
 
@@ -198,16 +263,17 @@ consegue de fato aplicá-lo a uma requisição.
   mesmo gateway, todas continuam compartilhando. Exit node sozinho não separa
   contas.
 - **Vários exit nodes** separam, desde que cada conta esteja vinculada a um
-  deles — e o vínculo é exatamente o `scope='account'` acima. O Tailscale
-  fornece os endereços; o OmniRoute decide qual conta usa qual.
+  deles — e o vínculo é exatamente o `proxyPoolId` acima. O Tailscale fornece os
+  endereços; o 9Router decide qual conta usa qual.
 - Para rotear por conta você ainda precisa de um endpoint HTTP/SOCKS por nó,
-  cadastrado em `proxy_registry` como qualquer outra saída.
+  cadastrado como pool próprio, como qualquer outra saída.
 
 Vale o mesmo para qualquer origem de endereços — um VPS, um proxy residencial,
 um segundo link. O que separa contas é o vínculo por conta, não a tecnologia que
 produziu o endereço.
 
 **Padrões razoáveis:** uma saída por conta quando várias contas do mesmo
-provedor dividem um gateway; preferir **estabilidade a rotação** para conta
-nomeada; manter saída e conta na mesma região quando o provedor for sensível a
-isso; e conferir `google_access` antes de vincular uma conexão do Google.
+provedor dividem um gateway; `strictProxy` ligado, para que um proxy com
+problema falhe alto em vez de vazar; preferir **estabilidade a rotação** para
+conta nomeada; e manter saída e conta na mesma região quando o provedor for
+sensível a isso.
