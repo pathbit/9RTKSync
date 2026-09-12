@@ -8,6 +8,16 @@
 
 **`9RTKSync`** (*9Router Universal Token & Connection Synchronizer*) is a high-availability self-healing guardian for [9Router](https://github.com/decolua/9router) gateways. It eliminates sudden disconnects, premature OAuth token expirations, date format corruptions, and lingering rate-limit locks, keeping all connected accounts healthy and persistent.
 
+
+## Documentation
+
+The full documentation lives in the [project wiki](../../wiki): installation, the complete
+environment-variable contract, the dashboard, authentication and break-glass recovery,
+persistent logging, architecture, troubleshooting, and the upstream gateway fixes.
+
+Wiki pages are generated from [`docs/wiki/`](docs/wiki) — edit them there and open a pull
+request; a push to `master` republishes the wiki automatically.
+
 ---
 
 ## Core Features
