@@ -22,7 +22,7 @@ services:
 
   9rtksync:
     image: ghcr.io/pathbit/9rtksync:latest
-    container_name: 9rtksync
+    container_name: 9RTKSync
     restart: unless-stopped
     ports:
       - "127.0.0.1:9190:9190"

@@ -1,8 +1,10 @@
-"""Servidor HTTP ultra-leve e dashboard web embutido do 9rtksync."""
+"""Servidor HTTP ultra-leve e dashboard web embutido do 9RTKSync."""
 
 import json
 import os
 import threading
+import urllib.error
+import urllib.request
 from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from typing import Any, Callable, Dict
@@ -16,6 +18,7 @@ class DashboardHandler(BaseHTTPRequestHandler):
 
     sync_trigger_callback: Callable[[], Dict[str, Any]] = None
     db_path: str = ""
+    router_url: str = ""
 
     def log_message(self, format, *args):
         # Desativa logs verbosos no stdout da console
@@ -27,16 +30,33 @@ class DashboardHandler(BaseHTTPRequestHandler):
         elif self.path == "/api/status":
             self.serve_api_status()
         elif self.path == "/healthz":
-            if os.path.exists(self.db_path):
+            db_ok = bool(self.db_path and os.path.exists(self.db_path))
+            router_ok = True
+            if self.router_url:
+                try:
+                    req = urllib.request.Request(
+                        self.router_url,
+                        headers={"User-Agent": "9RTKSync-Healthcheck/1.0"},
+                    )
+                    with urllib.request.urlopen(req, timeout=3.0) as resp:
+                        router_ok = resp.status < 500
+                except urllib.error.HTTPError as e:
+                    # Se o 9Router respondeu (mesmo 401/403/404), o serviço está no ar
+                    router_ok = e.code < 500
+                except Exception:
+                    router_ok = False
+
+            if db_ok and router_ok:
                 self.send_response(HTTPStatus.OK)
                 self.send_header("Content-Type", "text/plain")
                 self.end_headers()
                 self.wfile.write(b"OK")
             else:
+                reason = "DATABASE_NOT_READY" if not db_ok else "ROUTER_SERVICE_UNREACHABLE"
                 self.send_response(HTTPStatus.SERVICE_UNAVAILABLE)
                 self.send_header("Content-Type", "text/plain")
                 self.end_headers()
-                self.wfile.write(b"DATABASE_NOT_READY")
+                self.wfile.write(reason.encode("utf-8"))
         else:
             self.send_error(HTTPStatus.NOT_FOUND, "Página não encontrada")
 
@@ -52,7 +72,7 @@ class DashboardHandler(BaseHTTPRequestHandler):
             with open(html_path, "rb") as f:
                 content = f.read()
         else:
-            content = b"<h1>9rtksync Dashboard</h1><p>index.html not found</p>"
+            content = b"<h1>9RTKSync Dashboard</h1><p>index.html not found</p>"
 
         self.send_response(HTTPStatus.OK)
         self.send_header("Content-Type", "text/html; charset=utf-8")
@@ -120,10 +140,12 @@ def start_web_server(
     host: str,
     port: int,
     db_path: str,
+    router_url: str = "",
     sync_callback: Callable[[], Dict[str, Any]] = None,
 ) -> HTTPServer:
     """Inicia o servidor HTTP em background thread."""
     DashboardHandler.db_path = db_path
+    DashboardHandler.router_url = router_url
     DashboardHandler.sync_trigger_callback = sync_callback
     server = HTTPServer((host, port), DashboardHandler)
 

@@ -1,12 +1,12 @@
 name: Relato de Bug
-description: Reporte um problema ou falha de sincronização no 9rtksync
+description: Reporte um problema ou falha de sincronização no 9RTKSync
 title: "[BUG] "
 labels: ["bug"]
 body:
   - type: markdown
     attributes:
       value: |
-        Obrigado por ajudar a aprimorar o 9rtksync! Forneça detalhes sobre a falha para podermos reproduzir e corrigir rapidamente.
+        Obrigado por ajudar a aprimorar o 9RTKSync! Forneça detalhes sobre a falha para podermos reproduzir e corrigir rapidamente.
   - type: input
     id: provider
     attributes:
@@ -26,12 +26,12 @@ body:
     id: logs
     attributes:
       label: Logs e Mensagens de Erro
-      description: Cole os logs do container ou do comando 9rtksync
+      description: Cole os logs do container ou do comando 9RTKSync
       render: shell
   - type: input
     id: version
     attributes:
-      label: Versão do 9rtksync e Ambiente
+      label: Versão do 9RTKSync e Ambiente
       description: Versão do Docker, imagem utilizada ou Python local
       placeholder: ex: ghcr.io/pathbit/9rtksync:latest no macOS Sequoia
     validations:

@@ -56,8 +56,8 @@ def print_status_table(settings: Settings):
 
 def main():
     parser = argparse.ArgumentParser(
-        prog="9rtksync",
-        description="9rtksync · 9Router Universal Token & Connection Sync",
+        prog="9RTKSync",
+        description="9RTKSync · 9Router Universal Token & Connection Sync",
     )
     parser.add_argument(
         "--db-path",

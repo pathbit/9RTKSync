@@ -1,6 +1,6 @@
 ## Descrição das Alterações
 
-Explique de forma clara e objetiva o que este Pull Request resolve, aprimora ou adiciona ao `9rtksync`.
+Explique de forma clara e objetiva o que este Pull Request resolve, aprimora ou adiciona ao `9RTKSync`.
 
 ## Tipo de Alteração
 

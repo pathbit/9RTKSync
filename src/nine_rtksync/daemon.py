@@ -119,7 +119,7 @@ def run_daemon(settings: Settings):
 
     def handle_signal(sig, frame):
         nonlocal running
-        print(f"\n[!] Sinal {sig} recebido. Encerrando 9rtksync graciosamente...", flush=True)
+        print(f"\n[!] Sinal {sig} recebido. Encerrando 9RTKSync graciosamente...", flush=True)
         running = False
 
     signal.signal(signal.SIGINT, handle_signal)
@@ -128,6 +128,7 @@ def run_daemon(settings: Settings):
     print("=" * 70, flush=True)
     print("⚡ 9RTKSYNC · 9ROUTER UNIVERSAL TOKEN & CONNECTION SYNCHRONIZER", flush=True)
     print(f"   Banco SQLite: {settings.db_path}", flush=True)
+    print(f"   Gateway URL:  {settings.router_url}", flush=True)
     print(f"   Intervalo: {settings.sync_interval}s · Margem de Renovação: {settings.refresh_margin}s", flush=True)
     print("=" * 70, flush=True)
 
@@ -138,6 +139,7 @@ def run_daemon(settings: Settings):
                 host=settings.web_host,
                 port=settings.web_port,
                 db_path=settings.db_path,
+                router_url=settings.router_url,
                 sync_callback=engine.sync_all,
             )
             print(f"🌐 Dashboard Web ativo em: http://{settings.web_host}:{settings.web_port}", flush=True)
@@ -155,4 +157,4 @@ def run_daemon(settings: Settings):
         if running:
             engine.sync_all()
 
-    print("[*] 9rtksync finalizado com sucesso.", flush=True)
+    print("[*] 9RTKSync finalizado com sucesso.", flush=True)

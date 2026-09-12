@@ -1,12 +1,12 @@
-# 9rtksync · 9Router Token & Connection Sync
+# 9RTKSync · 9Router Token & Connection Sync
 
-[![CI](https://github.com/pathbit/9rtksync/actions/workflows/ci.yml/badge.svg)](https://github.com/pathbit/9rtksync/actions/workflows/ci.yml)
-[![Release and Docker Package](https://github.com/pathbit/9rtksync/actions/workflows/release.yml/badge.svg)](https://github.com/pathbit/9rtksync/actions/workflows/release.yml)
+[![CI](https://github.com/pathbit/9RTKSync/actions/workflows/ci.yml/badge.svg)](https://github.com/pathbit/9RTKSync/actions/workflows/ci.yml)
+[![Release and Docker Package](https://github.com/pathbit/9RTKSync/actions/workflows/release.yml/badge.svg)](https://github.com/pathbit/9RTKSync/actions/workflows/release.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python Version](https://img.shields.io/badge/python-3.14.7-blue.svg)](https://www.python.org/ftp/python/3.14.7/python-3.14.7-macos11.pkg)
-[![Docker Package](https://img.shields.io/badge/docker-ghcr.io%2Fpathbit%2F9rtksync-blue)](https://github.com/pathbit/9rtksync/pkgs/container/9rtksync)
+[![Docker Package](https://img.shields.io/badge/docker-ghcr.io%2Fpathbit%2F9rtksync-blue)](https://github.com/pathbit/9RTKSync/pkgs/container/9rtksync)
 
-O **`9rtksync`** (*9Router Token & Connection Synchronizer*) é um guardião de alta disponibilidade e auto-cura para gateways **9Router**. Ele elimina de forma definitiva desconexões súbitas, expiração prematura de tokens OAuth, corrupção de formatos de data e bloqueios residuais de *rate limit*, mantendo **qualquer conta conectada ativa e saudável**.
+O **`9RTKSync`** (*9Router Token & Connection Synchronizer*) é um guardião de alta disponibilidade e auto-cura para gateways [9Router](https://github.com/decolua/9router). Ele elimina desconexões súbitas, expiração prematura de tokens OAuth, corrupção de formatos de data e bloqueios residuais de *rate limit*, mantendo qualquer conta conectada ativa e saudável.
 
 ---
 
@@ -14,7 +14,7 @@ O **`9rtksync`** (*9Router Token & Connection Synchronizer*) é um guardião de 
 
 * **Auto-Cura Numérica de Expiração**
   * O 9Router nativamente grava o campo `expiresAt` como texto ISO (ex: `"2026-09-12T11:54:08.336Z"`). Isso quebra validações numéricas internas gerando falsos erros HTTP 503.
-  * O `9rtksync` monitora o banco SQLite e converte automaticamente strings para epoch em milissegundos numéricos válidos.
+  * O `9RTKSync` monitora o banco SQLite e converte automaticamente strings para epoch em milissegundos numéricos válidos.
 * **Renovação Preventiva Universal de OAuth**
   * Conexões **Google Antigravity** e **Gemini CLI**: renova antes da expiração (margem de 15 minutos) e sincroniza tokens gerados localmente no host (`~/.gemini/`).
   * Conexões **Claude OAuth, GitHub Copilot, OpenAI Codex, AWS Kiro, Codeium Windsurf**: monitora validade de tokens e executa auto-renovação antes que o gateway sofra interrupção.
@@ -24,6 +24,8 @@ O **`9rtksync`** (*9Router Token & Connection Synchronizer*) é um guardião de 
   * Servidor web nativo ultra-leve na porta `9190` com interface visual moderna, contagem regressiva de validade de cada conta e acionador de sincronização manual via navegador.
 * **Garantia de Combos de Resiliência**
   * Mantém cadastrados e atualizados no SQLite os combos de fallback (`arsenal-supremo`, `arsenal-rapido`, `arsenal-offline`, `claudegravity-fallback`, `claudegravity-thinking`) sem conflitos de chave única.
+* **Execução Segura em Virtual Environment**
+  * Todo o ecossistema Python executa estritamente isolado em *virtual environment* tanto no container Docker (`/opt/venv`) quanto em ambiente de desenvolvimento local (`.venv`).
 
 ---
 
@@ -32,27 +34,33 @@ O **`9rtksync`** (*9Router Token & Connection Synchronizer*) é um guardião de 
 O pacote oficial do Docker é publicado automaticamente pelo GitHub Actions no GitHub Container Registry (GHCR):
 
 ```bash
-# Baixar a imagem mais recente
 docker pull ghcr.io/pathbit/9rtksync:latest
 ```
 
 ### Exemplo de Uso no Docker Compose
 
-Adicione o serviço `9rtksync` ao seu `docker-compose.yml` junto ao 9Router:
+Adicione o serviço `9RTKSync` ao seu `docker-compose.yml` junto ao [9Router](https://github.com/decolua/9router):
 
 ```yaml
 services:
   9router:
     image: decolua/9router:latest
-    container_name: 9router
+    container_name: claudegravity-router
+    restart: unless-stopped
     ports:
       - "127.0.0.1:20128:20128"
     volumes:
       - 9router_data:/app/data
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://127.0.0.1:20128/dashboard"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
 
   9rtksync:
     image: ghcr.io/pathbit/9rtksync:latest
-    container_name: 9rtksync
+    container_name: 9RTKSync
     restart: unless-stopped
     ports:
       - "127.0.0.1:9190:9190"
@@ -61,12 +69,20 @@ services:
       - ${HOME}/.gemini:/root/.gemini:ro
     environment:
       - DB_PATH=/app/data/db/data.sqlite
+      - ROUTER_URL=http://9router:20128
       - SYNC_INTERVAL=300
       - REFRESH_MARGIN=900
       - ENABLE_WEB_DASHBOARD=1
       - WEB_PORT=9190
     depends_on:
-      - 9router
+      9router:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "/opt/venv/bin/python3", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:9190/healthz', timeout=3)"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
 
 volumes:
   9router_data:
@@ -74,34 +90,37 @@ volumes:
 
 ---
 
-## Como Executar Localmente (Sem Docker)
+## Como Executar Localmente em Virtual Environment
 
-O `9rtksync` utiliza exclusivamente a biblioteca padrão do Python (sem dependências externas pesadas):
+Em conformidade com os padrões de isolamento, a execução local utiliza estritamente um ambiente virtual Python com [Python 3.14.7](https://www.python.org/ftp/python/3.14.7/python-3.14.7-macos11.pkg):
 
 ### 1. Clonar o Repositório
 
 ```bash
-git clone https://github.com/pathbit/9rtksync.git
-cd 9rtksync
+git clone https://github.com/pathbit/9RTKSync.git
+cd 9RTKSync
 ```
 
-### 2. Instalação Local
+### 2. Criar e Ativar o Virtual Environment
 
 ```bash
+python3 -m venv .venv
+source .venv/bin/activate
+pip install --upgrade pip
 pip install -e .
 ```
 
-### 3. Comandos Disponíveis
+### 3. Comandos Disponíveis via Virtual Environment
 
 ```bash
-# Exibir tabela com status de todas as contas e combos
-9rtksync --status --db-path /caminho/para/data.sqlite
+# Exibir status das conexões do 9Router e combos
+9RTKSync --status --db-path /caminho/para/data.sqlite
 
-# Executar uma rodada imediata de sincronização e sair
-9rtksync --once --db-path /caminho/para/data.sqlite
+# Executar uma rodada única imediata de sincronização
+9RTKSync --once --db-path /caminho/para/data.sqlite
 
-# Executar em modo daemon contínuo com dashboard web
-9rtksync --daemon --db-path /caminho/para/data.sqlite
+# Executar daemon contínuo com dashboard web na porta 9190
+9RTKSync --daemon --db-path /caminho/para/data.sqlite
 ```
 
 ---
@@ -111,6 +130,7 @@ pip install -e .
 | Variável | Padrão | Descrição |
 | :--- | :--- | :--- |
 | `DB_PATH` | `/app/data/db/data.sqlite` | Caminho do arquivo SQLite do 9Router |
+| `ROUTER_URL` | `http://127.0.0.1:20128` | URL base do gateway 9Router para testes de conectividade |
 | `SYNC_INTERVAL` | `300` | Intervalo em segundos entre varreduras no modo daemon |
 | `REFRESH_MARGIN` | `900` | Margem prévia em segundos para renovação de tokens |
 | `ENABLE_WEB_DASHBOARD` | `1` | Ativa o dashboard web embutido (`1` para sim, `0` para não) |
@@ -136,9 +156,10 @@ Recursos do painel:
 
 ## Testes Unitários
 
-Execute a suíte de testes completa:
+Execute a suíte de testes completa dentro do virtual environment:
 
 ```bash
+source .venv/bin/activate
 PYTHONPATH=src python3 -m unittest discover -s tests -p "test_*.py"
 ```
 
@@ -147,11 +168,17 @@ PYTHONPATH=src python3 -m unittest discover -s tests -p "test_*.py"
 ## Contribuição e Proteção da Branch Master
 
 * A branch `master` é protegida. Toda alteração deve ser submetida via Pull Request e aprovada pela suíte de CI.
-* Para reportar problemas ou sugerir novos provedores, utilize os formulários em [Issues](https://github.com/pathbit/9rtksync/issues).
+* Para reportar problemas ou sugerir novos provedores, utilize os formulários em [Issues](https://github.com/pathbit/9RTKSync/issues).
+* Referência oficial do projeto base: [9Router no GitHub](https://github.com/decolua/9router).
 
 ---
 
-## Licença
+## 📄 Licença
 
-Este projeto é distribuído sob a licença [MIT](LICENSE).
-Desenvolvido pela engenharia da **PathBit**.
+Distribuído sob a Licença MIT. O texto completo está em [LICENSE](https://github.com/pathbit/9RTKSync/blob/master/LICENSE).
+
+Na prática: use, copie, altere e redistribua à vontade, inclusive comercialmente, desde que o aviso de copyright e a licença acompanhem as cópias. O software é fornecido como está, sem garantias.
+
+---
+
+Desenvolvido com ❤️ pela [Pathbit](https://pathbit.co/)
