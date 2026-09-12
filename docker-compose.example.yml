@@ -3,7 +3,7 @@ name: 9rtksync-stack
 services:
   9router:
     image: decolua/9router:latest
-    container_name: 9router
+    container_name: 9rtk-router
     restart: unless-stopped
     ports:
       # Porta interna 20128 (padrao do 9Router); publicada em 8081 no host.
@@ -29,8 +29,14 @@ services:
       - 9router_data:/app/data
 
   9rtksync:
+    # Mesmo uid do gateway. Os dois compartilham o volume, e este servico
+    # cria db/ e logs/ no startup: rodando como root, esses diretorios
+    # nasciam com dono root e o 9router -- que roda como `node` (1000) --
+    # perdia a escrita no proprio volume, recusando o login com
+    # "EACCES: permission denied, mkdir '/app/data/db/backups'".
+    user: "1000:1000"
     image: ghcr.io/pathbit/9rtksync:latest
-    container_name: 9rtksync
+    container_name: 9rtk-sync
     restart: unless-stopped
     ports:
       # Porta interna 9090 (igual no OminiRTKSync); publicada em 9091 no host.

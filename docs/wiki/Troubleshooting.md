@@ -89,7 +89,7 @@ If the numbers still look wrong, the synchronizer may not be writing at all — 
 Sign in with user `admin` and the **recovery hash** as the password. Find it with:
 
 ```bash
-docker logs 9rtksync 2>&1 | grep "Recovery hash"
+docker logs 9rtk-sync 2>&1 | grep "Recovery hash"
 # or, if the log file is mounted:
 grep "Recovery hash" /app/data/logs/9rtksync.log
 ```
@@ -97,7 +97,7 @@ grep "Recovery hash" /app/data/logs/9rtksync.log
 If the log has already rotated past it, the value is on disk:
 
 ```bash
-docker exec 9rtksync cat /app/data/.dashboard_recovery
+docker exec 9rtk-sync cat /app/data/.dashboard_recovery
 ```
 
 To pin your own instead of relying on the generated one, set `DASHBOARD_RECOVERY_HASH` and

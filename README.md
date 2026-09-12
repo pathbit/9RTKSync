@@ -139,7 +139,7 @@ Add `9rtksync` to your `docker-compose.yml` alongside [9Router](https://github.c
 services:
   9router:
     image: decolua/9router:latest
-    container_name: claudegravity-router
+    container_name: 9rtk-router
     restart: unless-stopped
     ports:
       # 20128 dentro do container; 8081 no host, para nao disputar a porta
@@ -156,7 +156,7 @@ services:
 
   9rtksync:
     image: ghcr.io/pathbit/9rtksync:latest
-    container_name: 9rtksync
+    container_name: 9rtk-sync
     restart: unless-stopped
     ports:
       - "127.0.0.1:9091:9090"

@@ -14,7 +14,7 @@ name: 9rtksync-test
 services:
   9router:
     image: decolua/9router:latest
-    container_name: 9rtksync-test-gateway
+    container_name: 9rtk-test-router
     restart: unless-stopped
     ports:
       - "127.0.0.1:19128:20128"
@@ -46,7 +46,7 @@ services:
   9rtksync:
     build: .
     image: ghcr.io/pathbit/9rtksync:local
-    container_name: 9rtksync-test-sync
+    container_name: 9rtk-test-sync
     restart: unless-stopped
     ports:
       # Porta interna 9090 nos tres sincronizadores; publicada em 19091 aqui.

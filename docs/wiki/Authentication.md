@@ -92,8 +92,8 @@ password.
 **Retrieving it later**
 
 ```bash
-docker logs 9rtksync 2>&1 | grep "Recovery hash"
-docker exec 9rtksync cat /app/data/.dashboard_recovery
+docker logs 9rtk-sync 2>&1 | grep "Recovery hash"
+docker exec 9rtk-sync cat /app/data/.dashboard_recovery
 ```
 
 **Notes**

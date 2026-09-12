@@ -15,12 +15,12 @@ docker pull ghcr.io/pathbit/9rtksync:latest
 A working `docker-compose.yml` alongside the gateway:
 
 ```yaml
-name: 9router-stack
+name: 9rtksync-stack
 
 services:
   9router:
     image: decolua/9router:latest
-    container_name: 9router
+    container_name: 9rtk-router
     restart: unless-stopped
     ports:
       # 20128 dentro do container; 8081 no host, para nao disputar a porta
@@ -35,7 +35,7 @@ services:
 
   9rtksync:
     image: ghcr.io/pathbit/9rtksync:latest
-    container_name: 9rtksync
+    container_name: 9rtk-sync
     restart: unless-stopped
     ports:
       # Internal port 9090 (same in OminiRTKSync); published on 9091.
