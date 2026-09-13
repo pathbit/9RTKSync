@@ -21,6 +21,15 @@ classifiers = [
     "Topic :: Utilities",
 ]
 
+[project.optional-dependencies]
+# SAML2 nao sai com a biblioteca padrao: a assinatura e sobre canonicalizacao
+# exclusiva 1.0 (o `canonicalize` do xml.etree e C14N 2.0, outro algoritmo), nao
+# ha verificacao RSA na stdlib, e amarrar a referencia da assinatura ao elemento
+# efetivamente lido -- a defesa contra o deslocamento da assercao na arvore -- e
+# trabalho de biblioteca. Extra opcional: quem so usa OIDC nao carrega nada, e o
+# codigo importa a biblioteca dentro da funcao.
+saml = ["python3-saml>=1.16"]
+
 [project.urls]
 Homepage = "https://github.com/pathbit/9RTKSync"
 Repository = "https://github.com/pathbit/9RTKSync"

@@ -96,9 +96,29 @@ TRANSLATIONS: Dict[str, Dict[str, str]] = {
         "table.cascade": "Model cascade",
         "combos.title": "Resilience combos",
         "combos.empty": "No fallback combo registered.",
+        "keys.title": "Virtual keys",
+        "keys.empty": "No virtual key issued by the gateway.",
+        "keys.enabled": "Accepted",
+        "keys.disabled": "Deactivated",
+        "keys.access_all": "All models",
+        "models.title": "Registered models",
+        "models.empty": "The gateway answered with an empty model catalogue.",
+        "models.no_key": "The gateway issues no active key, and it only hands the model "
+                         "catalogue to a key it issued itself.",
+        "models.unreachable": "The gateway did not answer the model catalogue.",
+        "models.inherited": "Status, validity and last renewal come from the connection that serves this model.",
+        "models.showing": "Showing {shown} of {total} models — open the gateway for the full list.",
+        "table.connection": "Connection",
+        "table.issued_at": "Issued at",
+        "table.key_state": "Key state",
+        "table.model_access": "Model access",
+        "table.not_declared": "Not declared",
+        "table.source": "Origin",
         "type.oauth": "OAuth 2.0",
         "type.api_key": "API key",
         "type.local": "Local",
+        "type.virtual_key": "Virtual key",
+        "type.synced_model": "Synced model",
         "health.active": "Active",
         "health.expiring_soon": "Expiring",
         "health.expired": "Expired",
@@ -146,6 +166,75 @@ TRANSLATIONS: Dict[str, Dict[str, str]] = {
         "footer.generated": "Data rendered on the server at",
         "language.save_failed": "Could not save the language preference: the panel storage is not writable.",
         "language.label": "Language",
+        "action.settings": "Settings",
+        "sso.title": "Single sign-on",
+        "sso.intro": "Optional. With nothing configured the panel behaves exactly as it does today, "
+                     "and the local form is never removed from the sign-in screen.",
+        "sso.tab_oidc": "OIDC",
+        "sso.tab_saml": "SAML2",
+        "sso.enabled_label": "Identity provider",
+        "sso.enabled_help": "One provider at a time. Two enabled at once is what makes a response "
+                            "from one acceptable as if it came from the other.",
+        "sso.enabled_off": "Disabled (password only)",
+        "sso.enabled_oidc": "OIDC",
+        "sso.base_url": "Public panel address",
+        "sso.base_url_help": "Scheme and host only, no path. Every return address is built from this "
+                             "value and never from the request headers.",
+        "sso.callback_url": "Redirect URI to register at the provider",
+        "sso.callback_help": "Copy this exact string into the provider. A single character of "
+                             "difference and the provider refuses the exchange.",
+        "sso.issuer": "Issuer",
+        "sso.issuer_help": "The issuer published in the discovery document. It must match "
+                           "character for character.",
+        "sso.client_id": "Client ID",
+        "sso.client_secret": "Client secret",
+        "sso.secret_stored": "A secret is stored.",
+        "sso.secret_missing": "No secret stored yet.",
+        "sso.secret_from_env": "Defined by the OIDC_CLIENT_SECRET environment variable; change it "
+                               "in the environment and restart.",
+        "sso.secret_keep_help": "It is never shown again. Leave this field empty to keep the "
+                                "current one.",
+        "sso.secret_failed": "Could not store the client secret: the panel storage is not writable.",
+        "sso.scopes": "Scopes",
+        "sso.scopes_help": "Space separated. The default covers the e-mail address and the profile.",
+        "sso.allowed_domains": "Allowed domains",
+        "sso.allowed_emails": "Allowed e-mails",
+        "sso.allowlist_help": "Comma separated, and mandatory: without it, every account at the "
+                              "provider can sign in here.",
+        "sso.current_password": "Current panel password",
+        "sso.current_password_help": "Required on top of the session: a stolen cookie must not be "
+                                     "enough to point the panel at a hostile provider.",
+        "sso.save": "Save single sign-on settings",
+        "sso.saved": "Single sign-on settings saved.",
+        "sso.save_failed": "Could not save the settings.",
+        "sso.wrong_password": "Wrong panel password.",
+        "sso.disabled_by_env": "Single sign-on is switched off by SSO_DISABLED in the environment. "
+                               "The local form is the only way in until that variable is removed.",
+        "sso.need_base_url": "The public panel address must be a scheme and a host, with no path, "
+                             "and https outside the loopback.",
+        "sso.need_issuer": "The issuer is required and must use https outside the loopback.",
+        "sso.need_client_id": "The client ID is required.",
+        "sso.need_secret": "The client secret is required.",
+        "sso.need_allowlist": "Fill in at least one allowed domain or e-mail.",
+        "sso.tunnel_warning": "A quick tunnel gets a new address on every start, and every return "
+                              "address registered at the provider stops matching. Single sign-on "
+                              "needs a named tunnel or Tailscale, with a fixed address.",
+        "sso.sign_in_with": "Sign in with {provider}",
+        "sso.or": "or",
+        "sso.failed": "Could not sign in through the identity provider.",
+        "sso.landing_title": "Signing in...",
+        "sso.landing_body": "The session has been created. Taking you to the dashboard.",
+        "sso.idp_entity_id": "Identity provider entity ID",
+        "sso.idp_sso_url": "Identity provider sign-on URL",
+        "sso.idp_cert": "Identity provider X.509 certificate",
+        "sso.idp_cert_help": "Public certificate, safe to store next to the rest of the settings.",
+        "sso.saml_unavailable": "SAML2 is not available in this image. It needs the python3-saml "
+                                "package, which is not installed: the signature is made over "
+                                "exclusive canonicalisation, the standard library has no RSA "
+                                "verification, and the defence against a signed assertion moved "
+                                "inside the tree is library work.",
+        "sso.saml_pending": "The SAML2 library is installed, but this version of the panel only "
+                            "signs in through OIDC. SAML2 sign-in is the next phase.",
     },
     "pt": {
         "app.subtitle": "9Router Universal Token &amp; Connection Synchronizer",
@@ -224,9 +313,29 @@ TRANSLATIONS: Dict[str, Dict[str, str]] = {
         "table.cascade": "Cascata de modelos",
         "combos.title": "Combos de resiliência",
         "combos.empty": "Nenhum combo de fallback registrado.",
+        "keys.title": "Chaves virtuais",
+        "keys.empty": "Nenhuma chave virtual emitida pelo gateway.",
+        "keys.enabled": "Aceita",
+        "keys.disabled": "Desativada",
+        "keys.access_all": "Todos os modelos",
+        "models.title": "Modelos cadastrados",
+        "models.empty": "O gateway respondeu com o catálogo de modelos vazio.",
+        "models.no_key": "O gateway não tem nenhuma chave ativa emitida, e ele só entrega o "
+                         "catálogo de modelos a uma chave que ele mesmo emitiu.",
+        "models.unreachable": "O gateway não respondeu ao catálogo de modelos.",
+        "models.inherited": "Status, validade e última renovação vêm da conexão que serve este modelo.",
+        "models.showing": "Mostrando {shown} de {total} modelos — a lista completa está no gateway.",
+        "table.connection": "Conexão",
+        "table.issued_at": "Emitida em",
+        "table.key_state": "Estado da chave",
+        "table.model_access": "Acesso a modelos",
+        "table.not_declared": "Não declarado",
+        "table.source": "Origem",
         "type.oauth": "OAuth 2.0",
         "type.api_key": "Chave de API",
         "type.local": "Local",
+        "type.virtual_key": "Chave virtual",
+        "type.synced_model": "Modelo sincronizado",
         "health.active": "Ativo",
         "health.expiring_soon": "Expirando",
         "health.expired": "Expirado",
@@ -274,6 +383,76 @@ TRANSLATIONS: Dict[str, Dict[str, str]] = {
         "footer.generated": "Dados gerados no servidor em",
         "language.save_failed": "Nao foi possivel gravar o idioma: o armazenamento do painel nao aceita escrita.",
         "language.label": "Idioma",
+        "action.settings": "Configurações",
+        "sso.title": "Entrada federada (SSO)",
+        "sso.intro": "Opcional. Sem configuração o painel funciona exatamente como hoje, e o "
+                     "formulário local nunca sai da tela de entrada.",
+        "sso.tab_oidc": "OIDC",
+        "sso.tab_saml": "SAML2",
+        "sso.enabled_label": "Provedor de identidade",
+        "sso.enabled_help": "Um provedor por vez. Dois ligados ao mesmo tempo é o que faz a "
+                            "resposta de um ser aceita como se fosse a do outro.",
+        "sso.enabled_off": "Desligado (somente senha)",
+        "sso.enabled_oidc": "OIDC",
+        "sso.base_url": "Endereço público do painel",
+        "sso.base_url_help": "Só esquema e host, sem caminho. Todo endereço de retorno nasce deste "
+                             "valor, e nunca dos cabeçalhos da requisição.",
+        "sso.callback_url": "Endereço de retorno a cadastrar no provedor",
+        "sso.callback_help": "Copie exatamente esta linha para o provedor. Um caractere de "
+                             "diferença e ele recusa a troca.",
+        "sso.issuer": "Emissor",
+        "sso.issuer_help": "O emissor publicado no documento de descoberta. Ele tem de bater "
+                           "caractere a caractere.",
+        "sso.client_id": "Identificador do cliente",
+        "sso.client_secret": "Segredo do cliente",
+        "sso.secret_stored": "Há um segredo guardado.",
+        "sso.secret_missing": "Ainda não há segredo guardado.",
+        "sso.secret_from_env": "Definido pela variável de ambiente OIDC_CLIENT_SECRET; altere no "
+                               "ambiente e reinicie.",
+        "sso.secret_keep_help": "Ele nunca é exibido de volta. Deixe este campo em branco para "
+                                "manter o atual.",
+        "sso.secret_failed": "Não foi possível gravar o segredo do cliente: o armazenamento do "
+                             "painel não aceita escrita.",
+        "sso.scopes": "Escopos",
+        "sso.scopes_help": "Separados por espaço. O padrão cobre o endereço de e-mail e o perfil.",
+        "sso.allowed_domains": "Domínios autorizados",
+        "sso.allowed_emails": "E-mails autorizados",
+        "sso.allowlist_help": "Separados por vírgula, e obrigatórios: sem isso, toda conta do "
+                              "provedor entra aqui.",
+        "sso.current_password": "Senha atual do painel",
+        "sso.current_password_help": "Exigida além da sessão: um cookie roubado não pode bastar "
+                                     "para apontar o painel a um provedor hostil.",
+        "sso.save": "Salvar configuração de SSO",
+        "sso.saved": "Configuração de SSO salva.",
+        "sso.save_failed": "Não foi possível salvar a configuração.",
+        "sso.wrong_password": "Senha do painel incorreta.",
+        "sso.disabled_by_env": "O SSO está desligado por SSO_DISABLED no ambiente. O formulário "
+                               "local é a única entrada enquanto a variável não for removida.",
+        "sso.need_base_url": "O endereço público do painel precisa ser esquema e host, sem "
+                             "caminho, e https fora do loopback.",
+        "sso.need_issuer": "O emissor é obrigatório e precisa usar https fora do loopback.",
+        "sso.need_client_id": "O identificador do cliente é obrigatório.",
+        "sso.need_secret": "O segredo do cliente é obrigatório.",
+        "sso.need_allowlist": "Preencha ao menos um domínio ou e-mail autorizado.",
+        "sso.tunnel_warning": "O túnel rápido troca de endereço a cada subida, e todo endereço de "
+                              "retorno cadastrado no provedor deixa de bater. O SSO exige túnel "
+                              "nomeado ou Tailscale, com endereço fixo.",
+        "sso.sign_in_with": "Entrar com {provider}",
+        "sso.or": "ou",
+        "sso.failed": "Não foi possível entrar pelo provedor de identidade.",
+        "sso.landing_title": "Entrando...",
+        "sso.landing_body": "A sessão foi criada. Levando você ao painel.",
+        "sso.idp_entity_id": "Identificador do provedor de identidade",
+        "sso.idp_sso_url": "Endereço de entrada do provedor de identidade",
+        "sso.idp_cert": "Certificado X.509 do provedor de identidade",
+        "sso.idp_cert_help": "Certificado público, que pode ficar ao lado do resto da configuração.",
+        "sso.saml_unavailable": "SAML2 não está disponível nesta imagem. Ele exige o pacote "
+                                "python3-saml, que não está instalado: a assinatura é sobre "
+                                "canonicalização exclusiva, a biblioteca padrão não verifica RSA, "
+                                "e a defesa contra a asserção assinada deslocada dentro da árvore "
+                                "é trabalho de biblioteca.",
+        "sso.saml_pending": "A biblioteca de SAML2 está instalada, mas esta versão do painel só "
+                            "entra por OIDC. A entrada por SAML2 é a próxima fase.",
     },
     "es": {
         "app.subtitle": "9Router Universal Token &amp; Connection Synchronizer",
@@ -352,9 +531,29 @@ TRANSLATIONS: Dict[str, Dict[str, str]] = {
         "table.cascade": "Cascada de modelos",
         "combos.title": "Combos de resiliencia",
         "combos.empty": "No hay combos de respaldo registrados.",
+        "keys.title": "Claves virtuales",
+        "keys.empty": "El gateway no ha emitido ninguna clave virtual.",
+        "keys.enabled": "Aceptada",
+        "keys.disabled": "Desactivada",
+        "keys.access_all": "Todos los modelos",
+        "models.title": "Modelos registrados",
+        "models.empty": "El gateway respondió con el catálogo de modelos vacío.",
+        "models.no_key": "El gateway no tiene ninguna clave activa emitida, y solo entrega el "
+                         "catálogo de modelos a una clave emitida por él mismo.",
+        "models.unreachable": "El gateway no respondió al catálogo de modelos.",
+        "models.inherited": "El estado, la validez y la última renovación vienen de la conexión que sirve este modelo.",
+        "models.showing": "Mostrando {shown} de {total} modelos — la lista completa está en el gateway.",
+        "table.connection": "Conexión",
+        "table.issued_at": "Emitida el",
+        "table.key_state": "Estado de la clave",
+        "table.model_access": "Acceso a modelos",
+        "table.not_declared": "No declarado",
+        "table.source": "Origen",
         "type.oauth": "OAuth 2.0",
         "type.api_key": "Clave de API",
         "type.local": "Local",
+        "type.virtual_key": "Clave virtual",
+        "type.synced_model": "Modelo sincronizado",
         "health.active": "Activo",
         "health.expiring_soon": "Por expirar",
         "health.expired": "Expirado",
@@ -402,6 +601,77 @@ TRANSLATIONS: Dict[str, Dict[str, str]] = {
         "footer.generated": "Datos generados en el servidor a las",
         "language.save_failed": "No se pudo guardar el idioma: el almacenamiento del panel no acepta escritura.",
         "language.label": "Idioma",
+        "action.settings": "Configuración",
+        "sso.title": "Inicio de sesión federado (SSO)",
+        "sso.intro": "Opcional. Sin configuración el panel funciona exactamente como hoy, y el "
+                     "formulario local nunca desaparece de la pantalla de entrada.",
+        "sso.tab_oidc": "OIDC",
+        "sso.tab_saml": "SAML2",
+        "sso.enabled_label": "Proveedor de identidad",
+        "sso.enabled_help": "Un proveedor a la vez. Dos activos al mismo tiempo es lo que hace que "
+                            "la respuesta de uno se acepte como si fuera la del otro.",
+        "sso.enabled_off": "Desactivado (solo contraseña)",
+        "sso.enabled_oidc": "OIDC",
+        "sso.base_url": "Dirección pública del panel",
+        "sso.base_url_help": "Solo esquema y host, sin ruta. Toda dirección de retorno nace de "
+                             "este valor, y nunca de las cabeceras de la petición.",
+        "sso.callback_url": "Dirección de retorno a registrar en el proveedor",
+        "sso.callback_help": "Copie exactamente esta línea en el proveedor. Un carácter de "
+                             "diferencia y rechaza el intercambio.",
+        "sso.issuer": "Emisor",
+        "sso.issuer_help": "El emisor publicado en el documento de descubrimiento. Debe coincidir "
+                           "carácter por carácter.",
+        "sso.client_id": "Identificador del cliente",
+        "sso.client_secret": "Secreto del cliente",
+        "sso.secret_stored": "Hay un secreto guardado.",
+        "sso.secret_missing": "Todavía no hay un secreto guardado.",
+        "sso.secret_from_env": "Definido por la variable de entorno OIDC_CLIENT_SECRET; cámbielo "
+                               "en el entorno y reinicie.",
+        "sso.secret_keep_help": "Nunca se vuelve a mostrar. Deje este campo vacío para conservar "
+                                "el actual.",
+        "sso.secret_failed": "No se pudo guardar el secreto del cliente: el almacenamiento del "
+                             "panel no acepta escritura.",
+        "sso.scopes": "Ámbitos",
+        "sso.scopes_help": "Separados por espacios. El valor por omisión cubre el correo y el perfil.",
+        "sso.allowed_domains": "Dominios autorizados",
+        "sso.allowed_emails": "Correos autorizados",
+        "sso.allowlist_help": "Separados por comas, y obligatorios: sin ellos, toda cuenta del "
+                              "proveedor entra aquí.",
+        "sso.current_password": "Contraseña actual del panel",
+        "sso.current_password_help": "Exigida además de la sesión: una cookie robada no puede "
+                                     "bastar para apuntar el panel a un proveedor hostil.",
+        "sso.save": "Guardar la configuración de SSO",
+        "sso.saved": "Configuración de SSO guardada.",
+        "sso.save_failed": "No se pudo guardar la configuración.",
+        "sso.wrong_password": "Contraseña del panel incorrecta.",
+        "sso.disabled_by_env": "El SSO está desactivado por SSO_DISABLED en el entorno. El "
+                               "formulario local es la única entrada mientras no se quite esa "
+                               "variable.",
+        "sso.need_base_url": "La dirección pública del panel debe ser esquema y host, sin ruta, y "
+                             "https fuera del loopback.",
+        "sso.need_issuer": "El emisor es obligatorio y debe usar https fuera del loopback.",
+        "sso.need_client_id": "El identificador del cliente es obligatorio.",
+        "sso.need_secret": "El secreto del cliente es obligatorio.",
+        "sso.need_allowlist": "Complete al menos un dominio o correo autorizado.",
+        "sso.tunnel_warning": "El túnel rápido cambia de dirección en cada arranque, y toda "
+                              "dirección de retorno registrada en el proveedor deja de coincidir. "
+                              "El SSO exige un túnel con nombre o Tailscale, con dirección fija.",
+        "sso.sign_in_with": "Entrar con {provider}",
+        "sso.or": "o",
+        "sso.failed": "No se pudo entrar por el proveedor de identidad.",
+        "sso.landing_title": "Entrando...",
+        "sso.landing_body": "La sesión fue creada. Llevándolo al panel.",
+        "sso.idp_entity_id": "Identificador del proveedor de identidad",
+        "sso.idp_sso_url": "Dirección de entrada del proveedor de identidad",
+        "sso.idp_cert": "Certificado X.509 del proveedor de identidad",
+        "sso.idp_cert_help": "Certificado público, que puede quedar junto al resto de la configuración.",
+        "sso.saml_unavailable": "SAML2 no está disponible en esta imagen. Exige el paquete "
+                                "python3-saml, que no está instalado: la firma es sobre "
+                                "canonicalización exclusiva, la biblioteca estándar no verifica "
+                                "RSA, y la defensa contra la aserción firmada movida dentro del "
+                                "árbol es trabajo de biblioteca.",
+        "sso.saml_pending": "La biblioteca de SAML2 está instalada, pero esta versión del panel "
+                            "solo entra por OIDC. La entrada por SAML2 es la próxima fase.",
     },
 }
 

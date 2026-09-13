@@ -3,7 +3,12 @@
 import json
 import time
 from dataclasses import dataclass, field
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
+
+# Margem em que uma credencial ja conta como "expirando" na tela. Vale para a
+# conexao e para a chave virtual, para que o mesmo prazo pinte o mesmo amarelo
+# nos dois cartoes.
+EXPIRING_SOON_SECONDS = 900
 
 
 @dataclass
@@ -225,3 +230,138 @@ class ConnectionRecord:
 
         # 9Router writes "ok", OmniRoute writes "active"; both mean healthy.
         return "active" if self.data.get("testStatus") in ("ok", "active", "success") else "unknown"
+
+
+@dataclass
+class VirtualKeyRecord:
+    """Uma linha de ``apiKeys`` vista pela lente do painel.
+
+    Chave virtual nao se renova: ela nasce e vale ate ser desativada. Por isso a
+    coluna "ultima renovacao" da tabela carrega aqui a data de EMISSAO -- e o
+    unico carimbo de tempo que a chave tem, e a coluna existe para casar com a
+    dos irmaos.
+
+    O material do token nunca chega a este objeto: ``get_all_api_keys`` sequer
+    le a coluna ``key``.
+    """
+
+    data: Dict[str, Any] = field(default_factory=dict)
+
+    @classmethod
+    def from_row(cls, row: Dict[str, Any]) -> "VirtualKeyRecord":
+        return cls(data=dict(row))
+
+    @property
+    def id(self) -> str:
+        return str(self.data.get("id") or "")
+
+    @property
+    def name(self) -> str:
+        """Como a chave se identifica na tela: o nome dado a ela, senao o id.
+
+        O id e um UUID -- identifica sem revelar nada. O prefixo do token seria
+        mais reconhecivel e esta fora de questao: e um pedaco do segredo.
+        """
+        return str(self.data.get("name") or self.id)
+
+    @property
+    def issued_at(self) -> Optional[str]:
+        return self.data.get("createdAt")
+
+    @property
+    def machine_id(self) -> str:
+        """A maquina a que o 9Router amarrou esta chave.
+
+        Nao e credencial: e uma impressao digital da instalacao, que o proprio
+        gateway devolve em ``POST /api/keys``. Aparece no modal porque e ela que
+        explica por que uma chave copiada para outra maquina deixa de funcionar.
+        """
+        return str(self.data.get("machineId") or "")
+
+    @property
+    def revoked(self) -> bool:
+        """Se o gateway ja recusa esta chave.
+
+        O ``apiKeys`` do 9Router tem uma bandeira so (``isActive``): nao ha
+        coluna de revogacao nem de banimento, entao desativada e o unico caminho
+        pelo qual uma chave deixa de ser aceita aqui.
+        """
+        return self.data.get("isActive") is False
+
+    @property
+    def remaining_seconds(self) -> Optional[int]:
+        """Sempre ``None``: a chave do 9Router nao tem prazo.
+
+        Nao ha coluna de expiracao em ``apiKeys`` -- a chave vale ate alguem
+        desativa-la. Isso e "sem expiracao" de verdade, e nao o dado ausente com
+        que o OAuth precisa ter cautela.
+        """
+        return None
+
+    @property
+    def health_status(self) -> str:
+        """Estado da chave, no mesmo vocabulario que as conexoes usam."""
+        if self.revoked:
+            return "invalid"
+        return "no_expiration"
+
+
+@dataclass
+class RegisteredModelRecord:
+    """Um modelo do catalogo do gateway, com a conexao que o serve.
+
+    Modelo nao tem saude propria nem validade propria: ele responde enquanto a
+    credencial da conexao que o publica for aceita. Por isso status, validade
+    restante e ultima renovacao sao HERDADOS da conexao dona -- e o modal diz de
+    qual conexao vieram, para que ninguem leia a linha como um veredito sobre o
+    modelo em si.
+    """
+
+    data: Dict[str, Any] = field(default_factory=dict)
+    connection: Optional[ConnectionRecord] = None
+
+    @classmethod
+    def from_entry(
+        cls, entry: Dict[str, Any], connection: Optional[ConnectionRecord] = None
+    ) -> "RegisteredModelRecord":
+        return cls(data=dict(entry), connection=connection)
+
+    @property
+    def id(self) -> str:
+        return str(self.data.get("id") or "")
+
+    @property
+    def name(self) -> str:
+        return str(self.data.get("name") or self.id)
+
+    @property
+    def provider(self) -> str:
+        return str(self.data.get("provider") or "")
+
+    @property
+    def source(self) -> str:
+        """De onde o gateway tirou esta entrada do catalogo."""
+        return str(self.data.get("source") or "")
+
+    @property
+    def supported_endpoints(self) -> List[str]:
+        return [str(e) for e in (self.data.get("supportedEndpoints") or [])]
+
+    @property
+    def connection_name(self) -> Optional[str]:
+        return self.connection.name if self.connection else None
+
+    @property
+    def health_status(self) -> str:
+        # Sem conexao dona identificada (o catalogo estatico do gateway inclui
+        # provedores que ninguem cadastrou aqui) nao ha o que afirmar: dizer
+        # "ativo" seria inventar uma sondagem que nunca houve.
+        return self.connection.health_status if self.connection else "not_checked"
+
+    @property
+    def remaining_seconds(self) -> Optional[int]:
+        return self.connection.remaining_seconds if self.connection else None
+
+    @property
+    def last_refresh_at(self) -> Optional[str]:
+        return self.connection.last_refresh_at if self.connection else None

@@ -19,6 +19,7 @@ republishes these pages automatically. Editing a page directly here will be over
 | [Configuration](Configuration) | Every environment variable — the full headless contract |
 | [Dashboard](Dashboard) | The server-rendered panel, language switcher, cron logs |
 | [Authentication](Authentication) | Credentials, headless mode, break-glass recovery |
+| [Single Sign-On](Single-Sign-On) | Optional OIDC sign-in beside the local form, and how to get back in when the provider is down |
 | [Logging](Logging) | Persistent file log, rotation, 30-day retention |
 | [Architecture](Architecture) | How the sync engine talks to the 9Router database |
 | [Remote Access](Remote-Access) | Tunnel, Tailscale, and what has to be on before either |

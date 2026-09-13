@@ -6,7 +6,7 @@ escapar não é alguém decidir abri-la, é alguém acrescentar uma rota nova e
 esquecer de protegê-la. Por isso esta guarda enumera o despacho do servidor e
 cobra o inverso: toda rota é fechada, menos as quatro que têm motivo declarado.
 
-As quatro públicas, e por quê:
+As públicas, e por quê:
 
 - `/healthz`     o healthcheck do Docker roda sem credencial nenhuma;
 - `/login`       exigir sessão para exibir o formulário que cria a sessão é um
@@ -16,6 +16,21 @@ As quatro públicas, e por quê:
 - `/credenciais-atualizadas`  é servida no instante seguinte à troca de senha,
                  quando o navegador ainda guarda a anterior; exigir a nova ali
                  daria um 401 cru logo depois de a troca ter dado certo.
+- `/sso/oidc/iniciar` e `/sso/oidc/callback`  a ida ao provedor de identidade e a
+                 volta dele acontecem sem sessão -- é a sessão que elas existem
+                 para criar. Exigir sessão aqui seria o mesmo círculo fechado do
+                 `/login`, com uma diferença: a volta é uma navegação vinda de
+                 OUTRO site, e nem o cookie de sessão seria enviado nela.
+
+                 O que substitui a sessão nessas duas, e está coberto por
+                 `tests/test_sso.py`: as duas passam pelo mesmo teto de
+                 tentativas por endereço do login (`protecao.registra_tentativa`);
+                 as duas respondem 404 enquanto o SSO não estiver configurado E
+                 ligado, pelo mesmo caminho de qualquer rota inexistente; e o
+                 callback só emite sessão depois de conferir, nesta ordem, o
+                 cookie de estado assinado, o `state`, o `code`, a troca no
+                 emissor, `iss`/`aud`/`exp`/`iat`/`nonce` do id_token, o `sub` do
+                 userinfo, o `email_verified` e a lista de permissão.
 """
 
 import pathlib
@@ -25,7 +40,14 @@ import unittest
 RAIZ = pathlib.Path(__file__).resolve().parent.parent
 SERVIDOR = RAIZ / "src" / "nine_rtksync" / "web" / "server.py"
 
-PUBLICAS = {"/healthz", "/login", "/robots.txt", "/credenciais-atualizadas"}
+PUBLICAS = {
+    "/healthz",
+    "/login",
+    "/robots.txt",
+    "/credenciais-atualizadas",
+    "/sso/oidc/iniciar",
+    "/sso/oidc/callback",
+}
 
 # Rotas citadas no despacho: `route == "/x"`, `path == "/x"`, startswith("/x")
 ROTA = re.compile(r'(?:route|path|rota_inicial)\s*==\s*"(/[a-z0-9/_-]*)"')

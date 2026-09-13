@@ -34,8 +34,13 @@ RX_PORTA = re.compile(r"(?<![\w.:])(\d{4,5})(?![\w.])")
 
 # Linha que invoca outro programa: as flags citadas pertencem a ele.
 RX_COMANDO_DE_TERCEIRO = re.compile(
+    # `apk` entrou junto de apt e brew, e pelo mesmo motivo: e o gerenciador de
+    # pacotes do Alpine, a base das tres imagens. Uma pagina que mostra como
+    # instalar uma dependencia de sistema cita `apk add --no-cache`, e acusar
+    # `--no-cache` de nao existir no CLI deste produto e ruido -- ruido treina o
+    # leitor a ignorar o verificador inteiro.
     r"\b(pip|pip3|docker|docker[- ]compose|git|curl|wget|tailscale|cloudflared|make|npm|npx|"
-    r"apt|apt-get|brew|systemctl|python3?\s+-m\s+venv|openssl|psql)\b"
+    r"apk|apt|apt-get|brew|systemctl|python3?\s+-m\s+venv|openssl|psql)\b"
 )
 
 # Flags que pertencem a outro programa e aparecem em prosa, sem o comando na

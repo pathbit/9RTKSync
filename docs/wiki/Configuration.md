@@ -74,6 +74,15 @@ back to the dashboard.
 
 Full rules in [Authentication](Authentication).
 
+**Single sign-on.** Two variables, and everything else is configured from the screen:
+
+| Variable | Default | Meaning |
+| :--- | :--- | :--- |
+| `OIDC_CLIENT_SECRET` | *(empty)* | Client secret of the OIDC application. Set here, the environment wins over the file the screen writes, and the screen locks the field. Left empty, the panel stores the secret in `.sso_client_secret` with mode `0600`, next to the recovery credential. |
+| `SSO_DISABLED` | `0` | `1` switches single sign-on off without touching the database — the emergency way back in when the identity provider is down. |
+
+Full rules in [Single Sign-On](Single-Sign-On).
+
 ---
 
 ## Logging

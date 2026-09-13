@@ -139,6 +139,94 @@ def upsert_combos(db_path: str, combos_list: List[tuple]) -> int:
         conn.close()
 
 
+def _tabela_existe(conn: sqlite3.Connection, nome: str) -> bool:
+    """Se a tabela existe nesta instalacao do gateway.
+
+    O schema do 9Router cresce entre versoes. Perguntar antes de consultar e o
+    que faz um cartao cair para o estado vazio em vez de derrubar a pagina toda.
+    """
+    cursor = conn.execute(
+        "SELECT name FROM sqlite_master WHERE type='table' AND name = ?", (nome,)
+    )
+    return cursor.fetchone() is not None
+
+
+def get_all_api_keys(db_path: str) -> List[Dict[str, Any]]:
+    """Chaves virtuais emitidas pelo 9Router (tabela ``apiKeys``), SEM o segredo.
+
+    Chave virtual e o token que o cliente apresenta ao gateway no lugar da
+    credencial do provedor -- todo gateway da familia emite uma, e o painel
+    precisa mostrar quais existem e se ainda estao aceitas.
+
+    A coluna ``key`` NAO entra na consulta: o material do token nao tem por que
+    sair do banco para desenhar uma tabela. Quem precisa dele para falar com o
+    gateway usa ``get_active_api_key``, que existe justamente para deixar esse
+    uso visivel num lugar so.
+    """
+    conn = get_db_connection(db_path)
+    try:
+        if not _tabela_existe(conn, "apiKeys"):
+            return []
+
+        # So pede o que a instalacao realmente tem: uma coluna ausente faria a
+        # consulta inteira falhar e o cartao sumir da tela.
+        presentes = {linha[1] for linha in conn.execute("PRAGMA table_info(apiKeys)")}
+        colunas = [c for c in ("id", "name", "machineId", "isActive", "createdAt") if c in presentes]
+        if "id" not in colunas:
+            return []
+
+        resultado: List[Dict[str, Any]] = []
+        for linha in conn.execute(f"SELECT {', '.join(colunas)} FROM apiKeys"):
+            item = dict(linha)
+            resultado.append({
+                "id": str(item.get("id") or ""),
+                "name": item.get("name") or "",
+                "machineId": item.get("machineId") or "",
+                "createdAt": item.get("createdAt"),
+                # Coluna ausente vira o padrao do proprio 9Router (chave ativa).
+                # Assumir o contrario pintaria de vermelho toda chave de uma
+                # instalacao antiga.
+                "isActive": bool(item["isActive"]) if item.get("isActive") is not None else True,
+            })
+        resultado.sort(key=lambda k: (k["name"] or k["id"]).lower())
+        return resultado
+    finally:
+        conn.close()
+
+
+def get_active_api_key(db_path: str) -> str:
+    """Uma chave ATIVA do gateway, e o unico lugar que le a coluna ``key``.
+
+    Existe para um uso so: o cabecalho ``Authorization`` da leitura do catalogo
+    de modelos. O 9Router monta ``/v1/models`` em tempo de requisicao, a partir
+    do registro estatico somado as conexoes vivas -- nao ha tabela de modelos
+    para ler, entao a rota HTTP e a unica fonte, e ela so responde a uma chave
+    que o proprio gateway emitiu.
+
+    (O irmao OminiRTkSync le o catalogo direto do banco, no namespace
+    ``syncedAvailableModels``, e por isso nao precisa de chave nenhuma. A
+    diferenca e do gateway, nao de criterio.)
+
+    O valor volta daqui apenas para virar cabecalho: nao e renderizado, nao
+    entra em log e nao passa por argv. String vazia quando nao ha chave ativa --
+    o cartao cai para o estado vazio dizendo exatamente isso.
+    """
+    conn = get_db_connection(db_path)
+    try:
+        if not _tabela_existe(conn, "apiKeys"):
+            return ""
+        cursor = conn.execute(
+            "SELECT key FROM apiKeys WHERE isActive = 1 ORDER BY createdAt ASC LIMIT 1"
+        )
+        linha = cursor.fetchone()
+        return str(linha[0]) if linha and linha[0] else ""
+    except sqlite3.Error:
+        # Instalacao sem a coluna ``key``: sem chave, sem catalogo, sem queda.
+        return ""
+    finally:
+        conn.close()
+
+
 def get_all_combos(db_path: str) -> List[Dict[str, Any]]:
     """Return all registered combos from database."""
     conn = get_db_connection(db_path)

@@ -290,6 +290,7 @@ When running with `ENABLE_WEB_DASHBOARD=1`, access the dashboard in your browser
 
 Dashboard capabilities:
 * Live operational metrics (Total Connections, OAuth Accounts, API Keys, Resilience Combos).
+* Six domain cards, in the same order as the sibling panels: gateway connection, scheduler, monitored connections, virtual keys, registered models, resilience combos.
 * Real-time countdown meters with visual health badges for every connection.
 * Gateway diagnostic card with millisecond latency testing (`POST /api/test-gateway`).
 * Password change modal for credential rotation (`POST /api/change-password`).

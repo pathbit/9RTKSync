@@ -2,7 +2,9 @@
 
 import base64
 import json
+import logging
 import os
+import secrets
 import sys
 import threading
 import time
@@ -14,18 +16,34 @@ from typing import Any, Callable, Dict, Optional
 
 from urllib.parse import parse_qs, urlparse
 
+from ..catalog import CATALOGO_INACESSIVEL, build_registered_models, fetch_gateway_models
 from ..config import Settings
 from ..i18n import DEFAULT_LANGUAGE, normalize_language, translate
 from ..prefs import get_preference, resolve_prefs_path, set_preference
-from .. import protecao, sessao
-from ..database import get_all_combos, get_all_connections
-from ..models import ConnectionRecord
-from .render import render_dashboard, render_login_page, render_notice_page
+from .. import protecao, sessao, sso
+from ..database import get_active_api_key, get_all_api_keys, get_all_combos, get_all_connections
+from ..models import ConnectionRecord, VirtualKeyRecord
+from .render import (
+    render_dashboard,
+    render_landing_page,
+    render_login_page,
+    render_notice_page,
+)
+
+# O detalhe de uma recusa de SSO vai para o log interno; a tela recebe sempre a
+# mesma frase. Nada do que passa por aqui carrega segredo: nem o code, nem os
+# tokens, nem o segredo do cliente.
+_log = logging.getLogger(__name__)
 
 # Tempo de vida do resultado da sondagem ao gateway. O /healthz é chamado a cada
 # 15s pelo Docker; sem cache, cada chamada faria uma requisição HTTP de saída de
 # até 3s, atrasando a resposta além do timeout do probe.
 ROUTER_PROBE_TTL_SECONDS = 30.0
+
+# Tempo de vida do catalogo de modelos. Ele sai de uma requisicao HTTP ao
+# gateway e muda de hora em hora, nao a cada F5: sem cache, cada recarga da
+# pagina -- e cada POST-Redirect-GET de acao -- pagaria a viagem de novo.
+MODEL_CATALOG_TTL_SECONDS = 120.0
 
 # Erros de socket que significam apenas "o cliente desistiu antes de ler a
 # resposta" — comportamento normal de health check, não falha do servidor.
@@ -34,6 +52,10 @@ CLIENT_DISCONNECT_ERRORS = (BrokenPipeError, ConnectionResetError, ConnectionAbo
 # Cache do resultado da sondagem ao gateway, compartilhado entre as threads do servidor.
 _router_probe_cache: Dict[str, tuple] = {}
 _router_probe_lock = threading.Lock()
+
+# Cache do catalogo de modelos, pela mesma razao e com a mesma disciplina.
+_model_catalog_cache: Dict[str, tuple] = {}
+_model_catalog_lock = threading.Lock()
 
 
 class QuietThreadingHTTPServer(ThreadingHTTPServer):
@@ -207,7 +229,9 @@ class DashboardHandler(BaseHTTPRequestHandler):
         "/", "/index.html", "/healthz", "/login", "/logout", "/robots.txt",
         "/favicon.ico", "/credenciais-atualizadas", "/logs",
     }
-    PREFIXOS_CONHECIDOS = ("/api/", "/acoes/")
+    # "/sso/" entra aqui, e nao em ROTAS_CONHECIDAS uma a uma, para que a ida e
+    # a volta do provedor de identidade nao virem 404 antes de serem tratadas.
+    PREFIXOS_CONHECIDOS = ("/api/", "/acoes/", "/sso/")
 
     def rota_existe(self, caminho: str) -> bool:
         return caminho in self.ROTAS_CONHECIDAS or caminho.startswith(self.PREFIXOS_CONHECIDOS)
@@ -249,6 +273,18 @@ class DashboardHandler(BaseHTTPRequestHandler):
 
         if urlparse(self.path).path == "/login":
             self.serve_login_page()
+            return
+
+        # A ida ao provedor de identidade e a volta dele acontecem SEM sessao --
+        # e a sessao que elas existem para criar. As duas passam pelo mesmo teto
+        # de tentativas do login, e as duas respondem 404 enquanto o SSO nao
+        # estiver configurado e ligado.
+        if urlparse(self.path).path == "/sso/oidc/iniciar":
+            self.serve_sso_iniciar()
+            return
+
+        if urlparse(self.path).path == "/sso/oidc/callback":
+            self.serve_sso_callback()
             return
 
         if not self.require_auth():
@@ -356,6 +392,8 @@ class DashboardHandler(BaseHTTPRequestHandler):
         """
         with _router_probe_lock:
             _router_probe_cache.clear()
+        with _model_catalog_lock:
+            _model_catalog_cache.clear()
 
     def handle_dashboard_action(self, route: str, raw_body: bytes) -> None:
         """Executa uma acao do painel e devolve o usuario para a pagina renderizada."""
@@ -400,9 +438,12 @@ class DashboardHandler(BaseHTTPRequestHandler):
             return
 
         if route == "/acoes/testar-gateway":
-            # Invalida o cache para forcar uma sondagem real nesta acao explicita.
-            with _router_probe_lock:
-                _router_probe_cache.pop(self.router_url, None)
+            # Zera TUDO o que foi memorizado sobre o gateway, e nao so a
+            # sondagem: o catalogo de modelos tambem sai dele. Enquanto este
+            # ramo descartava apenas a sondagem, o operador clicava "Testar
+            # conexao", via o gateway voltar a responder, e o cartao de modelos
+            # continuava dizendo "nao respondeu" por ate dois minutos.
+            self.invalidate_caches()
             online = self.probe_router()
             self.redirect_to_dashboard(
                 "success" if online else "danger",
@@ -424,6 +465,10 @@ class DashboardHandler(BaseHTTPRequestHandler):
             self.send_header("Location", "/")
             self.send_header("Content-Length", "0")
             self.end_headers()
+            return
+
+        if route == "/acoes/sso":
+            self.handle_sso_settings(raw_body)
             return
 
         if route == "/acoes/credenciais":
@@ -492,7 +537,7 @@ class DashboardHandler(BaseHTTPRequestHandler):
         except CLIENT_DISCONNECT_ERRORS:
             self.close_connection = True
 
-    def serve_login_page(self, erro: str = "") -> None:
+    def serve_login_page(self, erro: str = "", apaga_estado: bool = False) -> None:
         """Formulario de entrada: a porta do navegador para o painel."""
         lang = self.resolve_language()
         # O desafio so entra depois de algumas falhas: quem acerta de primeira
@@ -500,13 +545,241 @@ class DashboardHandler(BaseHTTPRequestHandler):
         endereco = protecao.endereco_do_cliente(self.client_address)
         desafio = protecao.novo_desafio() if protecao.precisa_de_desafio(endereco) else ""
         dificuldade = protecao.dificuldade_para(endereco)
-        payload = render_login_page(lang, erro, desafio, dificuldade)
+        payload = render_login_page(lang, erro, desafio, dificuldade, self.nome_do_provedor_sso())
         self.send_response(HTTPStatus.OK)
         self.send_header("Content-Type", "text/html; charset=utf-8")
         self.send_header("Content-Length", str(len(payload)))
         self.send_header("Cache-Control", "no-store")
+        if apaga_estado:
+            # O cookie de estado e de uso unico: recusado o retorno, ele sai
+            # junto, para que uma segunda volta com o mesmo `state` nao encontre
+            # nada com que comparar.
+            self.send_header("Set-Cookie", sessao.cabecalho_para_apagar_estado())
         self.end_headers()
         self.write_body(payload)
+
+    # --- SSO ---------------------------------------------------------------
+
+    def sso_base_dir(self) -> str:
+        """Diretorio do segredo do cliente: o mesmo das credenciais locais.
+
+        Nunca $HOME por atalho -- o segredo tem de cair no volume de dados, ou
+        ele some quando o container e recriado e o SSO se desliga sozinho.
+        """
+        if not self.settings:
+            return ""
+        return os.path.dirname(self.settings.get_auth_file_path())
+
+    def sso_config(self) -> Optional[Dict[str, Any]]:
+        """Configuracao em vigor, ou None quando o SSO nao deve funcionar."""
+        if not self.settings:
+            return None
+        return sso.configuracao_efetiva(self.prefs_path(), self.sso_base_dir())
+
+    def nome_do_provedor_sso(self) -> str:
+        """Nome exibido no botao da tela de login. Vazio quando nao ha botao.
+
+        A descoberta e consultada aqui de proposito: se o provedor de identidade
+        nao responde, o botao SOME em vez de levar a uma falha generica. O
+        formulario local nunca sai da tela.
+        """
+        config = self.sso_config()
+        if not config:
+            return ""
+        if not sso.descobre(str(config["issuer"])):
+            return ""
+        return sso.nome_do_provedor(config)
+
+    def serve_sso_iniciar(self) -> None:
+        """Sorteia o estado, grava o cookie de ida e manda o navegador ao provedor."""
+        endereco = protecao.endereco_do_cliente(self.client_address)
+        pode, espere = protecao.registra_tentativa(endereco)
+        if not pode:
+            self.responde_429(espere)
+            return
+
+        config = self.sso_config()
+        if not config:
+            # Sem configuracao a rota nao existe, pelo mesmo caminho de qualquer
+            # outra rota inexistente: nada anuncia que ha um SSO desligado aqui.
+            self.send_error(HTTPStatus.NOT_FOUND, "Not found")
+            return
+
+        documento = sso.descobre(str(config["issuer"]))
+        if not documento:
+            self.serve_login_page(translate("sso.failed", self.resolve_language()))
+            return
+
+        state = secrets.token_urlsafe(32)
+        nonce = secrets.token_urlsafe(32)
+        verificador = sso.novo_verificador()
+
+        self.send_response(HTTPStatus.FOUND)
+        self.send_header(
+            "Location", sso.url_de_autorizacao(config, documento, state, nonce, verificador)
+        )
+        self.send_header(
+            "Set-Cookie",
+            sessao.cabecalho_para_gravar_estado(
+                sessao.emitir_estado_sso(state, nonce, verificador)
+            ),
+        )
+        self.send_header("Cache-Control", "no-store")
+        self.send_header("Content-Length", "0")
+        self.end_headers()
+
+    def serve_sso_callback(self) -> None:
+        """Valida a volta do provedor e emite o MESMO cookie do formulario local."""
+        endereco = protecao.endereco_do_cliente(self.client_address)
+        pode, espere = protecao.registra_tentativa(endereco)
+        if not pode:
+            self.responde_429(espere)
+            return
+
+        lang = self.resolve_language()
+        config = self.sso_config()
+        if not config:
+            self.send_error(HTTPStatus.NOT_FOUND, "Not found")
+            return
+
+        estado = sessao.ler_estado_sso(
+            sessao.ler_estado_do_cabecalho(self.headers.get("Cookie", ""))
+        )
+        parametros = {
+            chave: valores[0]
+            for chave, valores in parse_qs(urlparse(self.path).query).items()
+            if valores
+        }
+
+        email, motivo = sso.conclui_login(
+            config=config, estado=estado, parametros=parametros
+        )
+        if not email:
+            # Uma frase so na tela; o detalhe fica no log, sem o code e sem token.
+            _log.warning("SSO: entrada recusada -- %s", motivo)
+            protecao.anota_falha(endereco)
+            self.serve_login_page(translate("sso.failed", lang), apaga_estado=True)
+            return
+
+        protecao.limpa_apos_sucesso(endereco)
+        _log.info("SSO: sessao emitida para uma identidade federada")
+
+        # NAO e um 302 para "/". O Chrome nao envia um cookie SameSite=Strict no
+        # salto seguinte de uma cadeia de redirecionamento iniciada em outro
+        # site: o operador cairia em /login com a sessao valida no bolso. A
+        # pagina de pouso e navegacao nova, e o cookie viaja nela.
+        payload = render_landing_page(lang)
+        self.send_response(HTTPStatus.OK)
+        self.send_header("Content-Type", "text/html; charset=utf-8")
+        self.send_header("Content-Length", str(len(payload)))
+        self.send_header("Cache-Control", "no-store")
+        self.send_header(
+            "Set-Cookie", sessao.cabecalho_para_gravar(sessao.emitir("sso:" + email))
+        )
+        # O cookie de ida ja cumpriu o papel: uso unico.
+        self.send_header("Set-Cookie", sessao.cabecalho_para_apagar_estado())
+        self.end_headers()
+        self.write_body(payload)
+
+    def sso_view(self) -> Dict[str, Any]:
+        """O que a tela de configuracao precisa saber. NUNCA o segredo do cliente.
+
+        Um GET de configuracao jamais devolve o valor gravado: a tela recebe
+        apenas a informacao de que EXISTE um segredo, e um campo para substitui-lo.
+        """
+        if not self.settings:
+            return {}
+        config = sso.ler_configuracao(self.prefs_path())
+        base = sso.normaliza_base_url(config.get("base_url", ""))
+        return {
+            "config": config,
+            "tem_segredo": bool(sso.ler_segredo(self.sso_base_dir())),
+            "segredo_do_ambiente": sso.segredo_vem_do_ambiente(),
+            "desligado_por_ambiente": sso.desligado_por_ambiente(),
+            "saml_disponivel": sso.saml_disponivel(),
+            "callback_url": f"{base}{sso.ROTA_CALLBACK}" if base else "",
+        }
+
+    def confere_senha_local(self, senha: str) -> bool:
+        """Confere a senha do PAINEL, nunca a identidade federada da sessao.
+
+        Quem entrou pelo provedor de identidade nao tem senha local -- e
+        exatamente por isso ela e exigida aqui: e o que um cookie sequestrado nao
+        entrega.
+        """
+        if not self.settings or not senha:
+            return False
+        guardadas = self.settings.get_stored_credentials()
+        usuario = guardadas[0] if guardadas else (self.settings.dashboard_user or "admin")
+        return self.settings.verify_credentials(usuario, senha)
+
+    def handle_sso_settings(self, raw_body: bytes) -> None:
+        """Grava a configuracao de SSO. Exige a senha local atual, alem da sessao."""
+        lang = self.resolve_language()
+        endereco = protecao.endereco_do_cliente(self.client_address)
+        pode, espere = protecao.registra_tentativa(endereco)
+        if not pode:
+            self.responde_429(espere)
+            return
+
+        campos_crus = parse_qs(raw_body.decode("utf-8", errors="replace"))
+
+        def campo(nome: str) -> str:
+            return (campos_crus.get(nome, [""])[0] or "").strip()
+
+        # Sem isto, sequestrar uma sessao de oito horas bastaria para apontar o
+        # painel a um provedor de identidade hostil e se por na lista de
+        # permissao -- persistencia permanente a partir de um cookie roubado.
+        if not self.confere_senha_local(campo("senha_atual")):
+            protecao.anota_falha(endereco)
+            self.redirect_to_dashboard("danger", translate("sso.wrong_password", lang))
+            return
+
+        if sso.desligado_por_ambiente():
+            self.redirect_to_dashboard("warning", translate("sso.disabled_by_env", lang))
+            return
+
+        campos = {
+            "enabled": campo("enabled"),
+            "base_url": campo("base_url"),
+            "issuer": campo("issuer"),
+            "client_id": campo("client_id"),
+            "scopes": campo("scopes"),
+            "allowed_domains": campo("allowed_domains"),
+            "allowed_emails": campo("allowed_emails"),
+        }
+        if campos["enabled"] not in sso.PROVEDORES:
+            self.redirect_to_dashboard("danger", translate("sso.save_failed", lang))
+            return
+
+        base_dir = self.sso_base_dir()
+        novo_segredo = campo("client_secret")
+        if novo_segredo and not sso.segredo_vem_do_ambiente():
+            if not sso.grava_segredo(base_dir, novo_segredo):
+                self.redirect_to_dashboard("danger", translate("sso.secret_failed", lang))
+                return
+        # Campo em branco MANTEM o segredo anterior. Quem reabre a tela para
+        # corrigir a lista de permissao nao digita o segredo de novo, e apagar o
+        # que funciona por causa de um campo vazio seria desligar o SSO em
+        # silencio.
+        tem_segredo = bool(sso.ler_segredo(base_dir))
+
+        if campos["enabled"] == "oidc":
+            problemas = sso.problemas_da_configuracao(campos, tem_segredo)
+            if problemas:
+                self.redirect_to_dashboard(
+                    "danger", " ".join(translate(chave, lang) for chave in problemas)
+                )
+                return
+
+        if not sso.grava_configuracao(self.prefs_path(), campos):
+            self.redirect_to_dashboard("danger", translate("sso.save_failed", lang))
+            return
+
+        # O emissor pode ter mudado: o documento memorizado do anterior nao vale
+        # mais nada.
+        sso.limpa_cache_descoberta()
+        self.redirect_to_dashboard("success", translate("sso.saved", lang))
 
     def handle_login(self) -> None:
         """Valida a credencial do formulario e emite o cookie de sessao."""
@@ -630,10 +903,41 @@ class DashboardHandler(BaseHTTPRequestHandler):
         """Idioma em vigor: preferencia salva no SQLite, senao o padrao (ingles)."""
         return normalize_language(get_preference(self.prefs_path(), "language", DEFAULT_LANGUAGE))
 
+    def read_model_catalog(self, connections: list) -> tuple:
+        """Catalogo de modelos do gateway, com cache e (estado, modelos) de volta.
+
+        A chave usada para autenticar a leitura vive so nesta pilha de chamada:
+        entra no cabecalho Authorization dentro de fetch_gateway_models e nao e
+        guardada no cache, que memoriza apenas o resultado.
+        """
+        if not self.db_path or not os.path.exists(self.db_path):
+            return CATALOGO_INACESSIVEL, []
+
+        agora = time.time()
+        with _model_catalog_lock:
+            gravado_em, resultado = _model_catalog_cache.get(self.router_url, (0.0, None))
+            if resultado is not None and (agora - gravado_em) < MODEL_CATALOG_TTL_SECONDS:
+                estado, entradas = resultado
+                return estado, build_registered_models(entradas, connections)
+
+        try:
+            estado, entradas = fetch_gateway_models(
+                self.router_url, get_active_api_key(self.db_path)
+            )
+        except Exception:
+            # Banco travado, arquivo sumindo no meio da leitura: o cartao cai
+            # para o estado vazio em vez de levar a pagina inteira junto.
+            estado, entradas = CATALOGO_INACESSIVEL, []
+
+        with _model_catalog_lock:
+            _model_catalog_cache[self.router_url] = (agora, (estado, entradas))
+        return estado, build_registered_models(entradas, connections)
+
     def collect_dashboard_state(self) -> Dict[str, Any]:
         """Le tudo o que a pagina precisa. Roda no servidor: o SQLite nunca sai daqui."""
         conns: list = []
         combos: list = []
+        keys: list = []
         db_exists = bool(self.db_path and os.path.exists(self.db_path))
         if db_exists:
             try:
@@ -644,6 +948,12 @@ class DashboardHandler(BaseHTTPRequestHandler):
                 combos = get_all_combos(self.db_path)
             except Exception:
                 combos = []
+            try:
+                keys = [VirtualKeyRecord.from_row(k) for k in get_all_api_keys(self.db_path)]
+            except Exception:
+                keys = []
+
+        models_state, models = self.read_model_catalog(conns)
 
         start_t = time.time()
         online = self.probe_router()
@@ -652,6 +962,9 @@ class DashboardHandler(BaseHTTPRequestHandler):
         return {
             "connections": conns,
             "combos": combos,
+            "keys": keys,
+            "models": models,
+            "modelsState": models_state,
             "cron": self.cron_scheduler.get_status() if self.cron_scheduler else {"active": False},
             "gateway": {
                 "url": self.router_url,
@@ -692,8 +1005,12 @@ class DashboardHandler(BaseHTTPRequestHandler):
             refresh_margin = self.settings.refresh_margin
 
         content = render_dashboard(
+            sso_view=self.sso_view(),
             connections=state["connections"],
             combos=state["combos"],
+            keys=state["keys"],
+            models=state["models"],
+            models_state=state["modelsState"],
             cron=state["cron"],
             gateway=state["gateway"],
             db_path=self.db_path,

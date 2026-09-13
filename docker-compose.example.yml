@@ -77,6 +77,11 @@ services:
       # repassa-las ao container.
       - CREDENTIAL_CHECK_ENABLED=${CREDENTIAL_CHECK_ENABLED:-1}
       - CREDENTIAL_CHECK_TIMEOUT=${CREDENTIAL_CHECK_TIMEOUT:-8}
+      # Entrada federada (SSO). Vazia = o segredo do cliente e administrado pela
+      # tela e gravado com modo 0600; preenchida = o ambiente vence e a tela
+      # trava o campo. SSO_DISABLED=1 desliga o SSO sem tocar no banco.
+      - OIDC_CLIENT_SECRET=${OIDC_CLIENT_SECRET:-}
+      - SSO_DISABLED=${SSO_DISABLED:-0}
       - LOG_DIR=${LOG_DIR:-/app/logs}
       - LOG_RETENTION_DAYS=${LOG_RETENTION_DAYS:-30}
       - LOG_LEVEL=${LOG_LEVEL:-INFO}
