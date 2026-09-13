@@ -57,7 +57,7 @@ the request:
 
 ```bash
 # 1. put the gateway on the bench network
-docker network connect 9rtk-egress_egress <gateway-container>
+docker network connect 9rtk-egress-net <gateway-container>
 
 # 2. register the pool through the gateway's own API
 curl -s -X POST http://127.0.0.1:8081/api/proxy-pools \
