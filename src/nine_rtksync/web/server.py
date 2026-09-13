@@ -17,9 +17,10 @@ from urllib.parse import parse_qs, urlparse
 from ..config import Settings
 from ..i18n import DEFAULT_LANGUAGE, normalize_language, translate
 from ..prefs import get_preference, resolve_prefs_path, set_preference
+from .. import sessao
 from ..database import get_all_combos, get_all_connections
 from ..models import ConnectionRecord
-from .render import render_dashboard, render_notice_page
+from .render import render_dashboard, render_login_page, render_notice_page
 
 # Tempo de vida do resultado da sondagem ao gateway. O /healthz é chamado a cada
 # 15s pelo Docker; sem cache, cada chamada faria uma requisição HTTP de saída de
@@ -81,6 +82,12 @@ class DashboardHandler(BaseHTTPRequestHandler):
         if not self.settings:
             return True
 
+        # Duas portas para a mesma casa. O cookie e o que o navegador usa
+        # depois do formulario; o Basic Auth continua aceito porque e ele que
+        # faz curl, script e monitoramento funcionarem sem sessao.
+        if sessao.usuario_da_sessao(sessao.ler_do_cabecalho(self.headers.get("Cookie", ""))):
+            return True
+
         auth_header = self.headers.get("Authorization", "")
         if not auth_header or not auth_header.startswith("Basic "):
             return False
@@ -102,6 +109,20 @@ class DashboardHandler(BaseHTTPRequestHandler):
             return True
 
         lang = self.resolve_language()
+
+        # Quem pediu HTML e um navegador: mandamos para o formulario, que e
+        # pagina nossa -- traduzida, com a cara do painel e com logout. O 401
+        # com WWW-Authenticate fica para quem NAO pediu HTML (curl, scripts,
+        # monitoramento), que e quem sabe responder a ele.
+        aceita = self.headers.get("Accept", "")
+        if "text/html" in aceita and urlparse(self.path).path != "/login":
+            self.send_response(HTTPStatus.FOUND)
+            self.send_header("Location", "/login")
+            self.send_header("Cache-Control", "no-store")
+            self.send_header("Content-Length", "0")
+            self.end_headers()
+            return False
+
         payload = render_notice_page(
             translate("auth.required", lang), translate("auth.required_body", lang)
         )
@@ -173,6 +194,12 @@ class DashboardHandler(BaseHTTPRequestHandler):
             self.serve_credentials_updated()
             return
 
+        # A pagina de login e publica por definicao: exigir sessao para exibir
+        # o formulario que cria a sessao seria um circulo fechado.
+        if urlparse(self.path).path == "/login":
+            self.serve_login_page()
+            return
+
         if not self.require_auth():
             return
 
@@ -218,6 +245,14 @@ class DashboardHandler(BaseHTTPRequestHandler):
         return True
 
     def do_POST(self):
+        rota_inicial = urlparse(self.path).path
+        if rota_inicial == "/login":
+            self.handle_login()
+            return
+        if rota_inicial == "/logout":
+            self.handle_logout()
+            return
+
         if not self.require_auth():
             return
 
@@ -406,6 +441,47 @@ class DashboardHandler(BaseHTTPRequestHandler):
         except CLIENT_DISCONNECT_ERRORS:
             self.close_connection = True
 
+    def serve_login_page(self, erro: str = "") -> None:
+        """Formulario de entrada: a porta do navegador para o painel."""
+        lang = self.resolve_language()
+        payload = render_login_page(lang, erro)
+        self.send_response(HTTPStatus.OK)
+        self.send_header("Content-Type", "text/html; charset=utf-8")
+        self.send_header("Content-Length", str(len(payload)))
+        self.send_header("Cache-Control", "no-store")
+        self.end_headers()
+        self.write_body(payload)
+
+    def handle_login(self) -> None:
+        """Valida a credencial do formulario e emite o cookie de sessao."""
+        length = int(self.headers.get("Content-Length", 0))
+        corpo = self.rfile.read(length) if length > 0 else b""
+        campos = parse_qs(corpo.decode("utf-8", "replace"))
+        usuario = (campos.get("usuario") or [""])[0]
+        senha = (campos.get("senha") or [""])[0]
+
+        if not self.settings or not self.settings.verify_credentials(usuario, senha):
+            # Mensagem unica para usuario errado e senha errada: distinguir os
+            # dois conta a quem tenta qual metade ja acertou.
+            self.serve_login_page(translate("auth.login_failed", self.resolve_language()))
+            return
+
+        self.send_response(HTTPStatus.FOUND)
+        self.send_header("Location", "/")
+        self.send_header("Set-Cookie", sessao.cabecalho_para_gravar(sessao.emitir(usuario)))
+        self.send_header("Cache-Control", "no-store")
+        self.send_header("Content-Length", "0")
+        self.end_headers()
+
+    def handle_logout(self) -> None:
+        """Apaga o cookie. O Basic Auth nao tem equivalente disso."""
+        self.send_response(HTTPStatus.FOUND)
+        self.send_header("Location", "/login")
+        self.send_header("Set-Cookie", sessao.cabecalho_para_apagar())
+        self.send_header("Cache-Control", "no-store")
+        self.send_header("Content-Length", "0")
+        self.end_headers()
+
     def serve_credentials_updated(self):
         """Confirma a troca de senha sem exigir a credencial que acabou de mudar."""
         lang = self.resolve_language()
@@ -487,11 +563,11 @@ class DashboardHandler(BaseHTTPRequestHandler):
                 # Converter esse texto em booleano fazia a tela declarar banco e
                 # gateway 100% operacionais justamente quando o arquivo sumia.
                 "dbOk": db_exists,
-                "dbSummary": (
-                    f"Operacional ({len(conns)} conexoes, {len(combos)} combos)"
-                    if db_exists
-                    else "Banco nao encontrado"
-                ),
+                # Numeros, e nao frase pronta: quem conhece o idioma
+                # escolhido e o render. Enquanto a frase nascia aqui, a tela em
+                # ingles exibia "Operacional (0 conexoes, 0 combos)".
+                "dbConnections": len(conns),
+                "dbCombos": len(combos),
             },
         }
 

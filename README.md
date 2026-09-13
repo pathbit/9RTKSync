@@ -67,7 +67,7 @@ On first boot with `DASHBOARD_PASSWORD` empty, the container generates a
 **recovery credential** and writes it inside the data directory. Read it:
 
 ```bash
-docker exec router-sync cat /app/data/db/.dashboard_recovery
+docker exec 9rtk-sync cat /app/data/db/.dashboard_recovery
 ```
 
 Sign in as `admin` with that value, then set a real password on the screen. The
@@ -136,15 +136,32 @@ docker pull ghcr.io/pathbit/9rtksync:latest
 Add `9rtksync` to your `docker-compose.yml` alongside [9Router](https://github.com/decolua/9router):
 
 ```yaml
+name: 9rtksync-stack
+
 services:
-  9router:
+  9rtk-router:
     image: decolua/9router:latest
     container_name: 9rtk-router
+    hostname: 9rtk-router
+    networks:
+      - 9rtksync-net
     restart: unless-stopped
     ports:
       # 20128 dentro do container; 8081 no host, para nao disputar a porta
       # padrao do 9Router com a stack do artigo.
       - "127.0.0.1:8081:20128"
+    environment:
+      - DATA_DIR=/app/data
+      - PORT=20128
+      - HOSTNAME=0.0.0.0
+      # Sem esta linha o fluxo de login e redirecionado para a porta interna,
+      # que nao existe no host.
+      - NEXT_PUBLIC_BASE_URL=http://localhost:8081
+      - NODE_ENV=production
+      # Sem valor de fallback: um default publicado em arquivo de exemplo vira
+      # a senha real de toda implantacao que so copiou e colou.
+      - INITIAL_PASSWORD=${INITIAL_PASSWORD:?defina INITIAL_PASSWORD no .env}
+      - JWT_SECRET=${JWT_SECRET:?defina JWT_SECRET no .env (openssl rand -hex 32)}
     volumes:
       - 9router_data:/app/data
     healthcheck:
@@ -154,27 +171,35 @@ services:
       retries: 3
       start_period: 20s
 
-  9rtksync:
+  9rtk-sync:
+    # Mesmo uid do gateway: os dois compartilham o volume de dados.
+    user: "1000:1000"
     image: ghcr.io/pathbit/9rtksync:latest
     container_name: 9rtk-sync
+    hostname: 9rtk-sync
+    networks:
+      - 9rtksync-net
     restart: unless-stopped
     ports:
       - "127.0.0.1:9091:9090"
     volumes:
       - 9router_data:/app/data
       - ${HOME}:/root/host:ro
+      - 9rtksync_logs:/app/logs
     environment:
       - HOST_HOME=/root/host
       - DB_PATH=/app/data/db/data.sqlite
-      - ROUTER_URL=http://9router:20128
+      - ROUTER_URL=${ROUTER_URL:-http://9rtk-router:20128}
       - SYNC_INTERVAL=${SYNC_INTERVAL:-300}
       - REFRESH_MARGIN=${REFRESH_MARGIN:-900}
       - ENABLE_WEB_DASHBOARD=${ENABLE_WEB_DASHBOARD:-1}
       - WEB_PORT=${WEB_PORT:-9090}
       - DASHBOARD_USER=${DASHBOARD_USER:-admin}
       - DASHBOARD_PASSWORD=${DASHBOARD_PASSWORD:-}
+      - LOG_DIR=${LOG_DIR:-/app/logs}
+      - LOG_RETENTION_DAYS=${LOG_RETENTION_DAYS:-30}
     depends_on:
-      9router:
+      9rtk-router:
         condition: service_healthy
     healthcheck:
       test: ["CMD", "/opt/venv/bin/python3", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:9090/healthz', timeout=3)"]
@@ -185,6 +210,14 @@ services:
 
 volumes:
   9router_data:
+  9rtksync_logs:
+
+networks:
+  9rtksync-net:
+    name: 9rtksync-net
+    # Rede propria da stack. Na rede default, duas stacks no mesmo daemon
+    # resolvem o mesmo nome curto e nao da para saber a qual gateway o
+    # sincronizador se conectou.
 ```
 
 ---
@@ -279,8 +312,10 @@ The only requirement is Docker. Nothing else needs to be installed on your machi
 # Or via Makefile target
 make test-container
 
-# Or via Docker Compose
-docker compose -f docker-compose.test.yml run --rm test
+# docker-compose.test.yml nao tem servico de teste: e uma bancada viva
+# (gateway real + este sincronizador) para conferir a stack de ponta a ponta.
+docker compose -f docker-compose.test.yml up -d
+docker compose -f docker-compose.test.yml down -v
 ```
 
 ### Option 2. Local Virtual Environment (Optional Prerequisites)

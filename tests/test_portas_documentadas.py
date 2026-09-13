@@ -6,7 +6,13 @@ texto e a que está na stack. Foi o que aconteceu quando as portas mudaram e os
 exemplos ficaram para trás.
 
 Este teste lê as portas que os composes do repositório realmente publicam e
-exige que todo bloco `- "127.0.0.1:X:Y"` citado na documentação seja um deles.
+exige que todo bloco `- "<endereço>:X:Y"` citado na documentação seja um deles.
+
+O padrão aceita qualquer endereço de bind, não só `127.0.0.1`: a página de
+acesso remoto publica o gateway no endereço da tailnet, e enquanto o regex
+exigia o loopback um `"100.101.102.103:20128:20128"` passava sem ser conferido
+-- que foi exatamente como a porta 20128 do host, reservada à stack do artigo,
+sobreviveu na documentação.
 """
 
 import os
@@ -14,7 +20,7 @@ import re
 import unittest
 
 RAIZ = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-RX_PORTA = re.compile(r'-\s*"127\.0\.0\.1:(\d+):(\d+)"')
+RX_PORTA = re.compile(r'-\s*"(?:\d{1,3}(?:\.\d{1,3}){3}:)?(\d+):(\d+)"')
 
 
 def composes():
@@ -49,7 +55,7 @@ class TestPortasDocumentadasBatem(unittest.TestCase):
             for host, interna in mapeamentos(doc):
                 if (host, interna) not in reais:
                     divergentes.append(
-                        f"{os.path.relpath(doc, RAIZ)}: 127.0.0.1:{host}:{interna} "
+                        f"{os.path.relpath(doc, RAIZ)}: {host}:{interna} "
                         f"não corresponde a nenhum compose deste repositório"
                     )
         self.assertEqual(

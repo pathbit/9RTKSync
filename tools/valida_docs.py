@@ -66,7 +66,12 @@ def paginas(raiz: str) -> List[str]:
     for pasta, dirs, arquivos in os.walk(raiz):
         dirs[:] = [
             d for d in dirs
-            if d not in (".git", "tmp", "node_modules", "__pycache__", ".venv", "assets")
+            # `.pytest_cache` traz um README.md proprio, citando as flags
+            # `--lf`/`--ff` do pytest. Ele nao e pagina deste repositorio --
+            # e gitignored -- e acusava duas divergencias falsas a cada vez
+            # que a suite rodava pelo pytest.
+            if d not in (".git", "tmp", "node_modules", "__pycache__", ".venv",
+                         ".pytest_cache", ".mypy_cache", ".ruff_cache", "assets")
         ]
         for a in arquivos:
             if a.endswith(".md"):
@@ -80,7 +85,8 @@ def fonte_do_repo(raiz: str) -> str:
     for pasta, dirs, arquivos in os.walk(raiz):
         dirs[:] = [
             d for d in dirs
-            if d not in (".git", "tmp", "node_modules", "__pycache__", ".venv")
+            if d not in (".git", "tmp", "node_modules", "__pycache__", ".venv",
+                         ".pytest_cache", ".mypy_cache", ".ruff_cache")
         ]
         for a in arquivos:
             if a.endswith((".py", ".yml", ".yaml", ".toml", ".cfg", ".sh", ".example")):

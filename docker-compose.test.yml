@@ -12,9 +12,12 @@
 name: 9rtksync-test
 
 services:
-  9router:
+  9rtk-test-router:
     image: decolua/9router:latest
     container_name: 9rtk-test-router
+    hostname: 9rtk-test-router
+    networks:
+      - 9rtksync-test-net
     restart: unless-stopped
     ports:
       - "127.0.0.1:19128:20128"
@@ -43,10 +46,13 @@ services:
       # O primeiro boot roda migracoes e cria o banco.
       start_period: 45s
 
-  9rtksync:
+  9rtk-test-sync:
     build: .
     image: ghcr.io/pathbit/9rtksync:local
     container_name: 9rtk-test-sync
+    hostname: 9rtk-test-sync
+    networks:
+      - 9rtksync-test-net
     restart: unless-stopped
     ports:
       # Porta interna 9090 nos tres sincronizadores; publicada em 19091 aqui.
@@ -54,7 +60,7 @@ services:
     environment:
       - DATA_DIR=/app/data/db
       - DB_PATH=/app/data/db/data.sqlite
-      - ROUTER_URL=http://9router:20128
+      - ROUTER_URL=http://9rtk-test-router:20128
       - WEB_PORT=9090
       - SYNC_INTERVAL=60
       - REFRESH_MARGIN=900
@@ -66,7 +72,7 @@ services:
     volumes:
       - gateway_data:/app/data
     depends_on:
-      9router:
+      9rtk-test-router:
         condition: service_healthy
     healthcheck:
       test: ["CMD", "/opt/venv/bin/python3", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:9090/healthz', timeout=3)"]
@@ -77,3 +83,10 @@ services:
 
 volumes:
   gateway_data:
+
+networks:
+  9rtksync-test-net:
+    name: 9rtksync-test-net
+    # Rede propria tambem na bancada de teste. Na rede default, duas stacks
+    # no mesmo daemon resolvem o mesmo nome curto e nao da para saber a qual
+    # gateway o sincronizador se conectou.
