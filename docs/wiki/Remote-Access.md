@@ -80,7 +80,10 @@ do not control, and you accept that the address is public to whoever has it.
 The same screen has a `Tailscale` button, which installs and connects the
 daemon. Your machine joins your private tailnet and the gateway becomes
 reachable at a `100.x.y.z` address, or at a MagicDNS name like
-`http://your-host:20128`.
+`http://your-host:20128`. The port here is the gateway's **own** `20128`,
+because the button starts `tailscaled` next to the gateway process — it is not
+the `8081` this repository publishes on the host. Publishing on the tailnet
+interface by hand, below, is the other case: there the host port applies.
 
 **When it fits:** almost always. Only devices you enrolled in your tailnet can
 reach the gateway — the address is not public, and there is nothing for a
@@ -99,17 +102,17 @@ tailscale ip -4        # e.g. 100.101.102.103
 # 3. Publish the gateway on the tailnet interface instead of loopback
 #    (in the compose, replace 127.0.0.1 with the tailnet address)
 ports:
-  - "100.101.102.103:20128:20128"
+  - "100.101.102.103:8081:20128"
 
 # 4. From another device already in the tailnet
-curl http://100.101.102.103:20128/v1/models
+curl http://100.101.102.103:8081/v1/models
 ```
 
 Binding to the tailnet address rather than `0.0.0.0` matters: `0.0.0.0` also
 exposes the gateway to the local network — the café Wi-Fi, the office VLAN —
 which is exactly what you were avoiding.
 
-**MagicDNS** makes this readable: with it on, `http://your-host:20128` works from
+**MagicDNS** makes this readable: with it on, `http://your-host:8081` works from
 any device in the tailnet, and the address survives a change of IP.
 
 ---
@@ -218,7 +221,11 @@ questão não se coloca.
 
 A mesma tela tem o botão `Tailscale`, que instala e conecta o daemon. A sua
 máquina entra na sua tailnet e o gateway passa a ser alcançável num endereço
-`100.x.y.z`, ou num nome MagicDNS como `http://seu-host:20128`.
+`100.x.y.z`, ou num nome MagicDNS como `http://seu-host:20128`. A porta aqui é
+a **própria** `20128` do gateway, porque o botão sobe o `tailscaled` ao lado do
+processo do gateway — não é a `8081` que este repositório publica no host.
+Publicar na interface da tailnet à mão, abaixo, é o outro caso: lá vale a porta
+do host.
 
 **Quando serve:** quase sempre. Só os dispositivos que você cadastrou alcançam o
 gateway — o endereço não é público e não há o que um estranho descubra.
@@ -235,10 +242,10 @@ tailscale ip -4        # ex.: 100.101.102.103
 
 # 3. Publique o gateway na interface da tailnet, em vez do loopback
 ports:
-  - "100.101.102.103:20128:20128"
+  - "100.101.102.103:8081:20128"
 
 # 4. De outro dispositivo já na tailnet
-curl http://100.101.102.103:20128/v1/models
+curl http://100.101.102.103:8081/v1/models
 ```
 
 Prender no endereço da tailnet em vez de `0.0.0.0` importa: `0.0.0.0` também

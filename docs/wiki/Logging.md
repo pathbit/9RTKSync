@@ -33,7 +33,7 @@ covered by `tests/test_logs.py`.
 Another service's logs sharing the same directory are left alone.
 
 ```
-/app/data/logs/
+/app/logs/
   9rtksync.log                ← active, never purged
   9rtksync.log.2026-09-11     ← kept (2 days old)
   9rtksync.log.2026-07-01     ← purged (73 days old, retention 30)
@@ -48,7 +48,7 @@ Another service's logs sharing the same directory are left alone.
 environment:
   - LOG_RETENTION_DAYS=90
 volumes:
-  - 9rtksync_logs:/app/data/logs
+  - 9rtksync_logs:/app/logs
 ```
 
 Mount a named volume (or a host path) or the files die with the container, which defeats the
@@ -75,7 +75,7 @@ The file log is **best effort**. If the directory cannot be created or written, 
 starts and prints once to stderr:
 
 ```
-[LOG] File log unavailable at /app/data/logs: [Errno 13] Permission denied
+[LOG] File log unavailable at /app/logs: [Errno 13] Permission denied
 ```
 
 A synchronizer that refuses to run because it cannot write a log file would be worse than one

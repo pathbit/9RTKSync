@@ -39,7 +39,7 @@ out and produce `BrokenPipeError` in the logs.
 | `SYNC_INTERVAL` | `300` | Seconds between synchronization passes. |
 | `REFRESH_MARGIN` | `900` | Seconds of remaining validity below which a token is renewed. |
 | `CRON_INTERVAL` | inherits `SYNC_INTERVAL` | Dedicated interval for the scheduler, when you want it to differ from the sync pass. |
-| `CRON_ENABLED` | `1` | `0` disables the automatic scheduler entirely. Synchronization then only happens on a manual trigger (`--once`, the **Run now** button, or `POST /api/sync`). |
+| `CRON_ENABLED` | `1` | `0` disables the automatic scheduler entirely. Synchronization then only happens on a manual trigger (`--once`, the **Sync now** button, or `POST /api/sync`). |
 | `CREDENTIAL_CHECK_ENABLED` | `1` | Asks each provider whether the stored credential is still accepted. `0` turns the live check off and the panel falls back to reporting `Not checked`. |
 | `CREDENTIAL_CHECK_TIMEOUT` | `8` | Seconds allowed per credential probe. |
 
@@ -109,11 +109,11 @@ No dashboard, no interactive setup, scheduler on a one-minute cadence, logs kept
 ```yaml
 environment:
   - DB_PATH=/app/data/db/data.sqlite
-  - ROUTER_URL=http://9router:20128
+  - ROUTER_URL=http://9rtk-router:20128
   - SYNC_INTERVAL=60
   - REFRESH_MARGIN=1200
   - ENABLE_WEB_DASHBOARD=0
-  - LOG_DIR=/app/data/logs
+  - LOG_DIR=/app/logs
   - LOG_RETENTION_DAYS=90
   - LOG_TO_STDOUT=0
 # The image ships a HEALTHCHECK that probes /healthz, which only the dashboard
