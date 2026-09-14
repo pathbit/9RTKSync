@@ -83,46 +83,46 @@ need it.
 
 ## Running with Docker
 
-### Configuração: `.env` a partir do exemplo
+### Configuration: `.env` from the example
 
-A configuração inteira vem de variáveis de ambiente, lidas de um `.env` ao lado
-do `docker-compose.yml` — o Compose o encontra sozinho, sem nenhuma flag.
+The whole configuration comes from environment variables, read from a `.env`
+next to `docker-compose.yml` — Compose finds it on its own, with no flag.
 
 ```bash
-make setup      # cria o .env a partir do .env.example, sem sobrescrever um existente
+make setup      # creates .env from .env.example, never overwriting an existing one
 ```
 
-O alvo lista, ao final, exatamente quais variáveis ficaram em branco e precisam
-ser preenchidas. Preencha e suba a stack.
+At the end, the target lists exactly which variables were left blank and need
+filling in. Fill them and bring the stack up.
 
-O `.env` **nunca** é versionado, e o `.env.example` não carrega nenhum valor de
-segredo — um valor publicado num arquivo de exemplo é, por definição, uma
-credencial pública. Um teste garante que toda variável exigida por um compose
-existe no exemplo, para que `cp .env.example .env` nunca produza um `.env`
-incompleto.
+The `.env` is **never** committed, and `.env.example` carries no secret value —
+a value published in an example file is, by definition, a public credential. A
+test guarantees that every variable a compose file requires exists in the
+example, so that `cp .env.example .env` never produces an incomplete `.env`.
 
-### Portas, e por que cada uma é diferente
+### Ports, and why each one differs
 
-Os três sincronizadores escutam na **mesma porta dentro do container** (`9090`)
-e publicam em portas diferentes no host, para que os três possam rodar lado a
-lado. O mesmo vale para os gateways: cada um tem a sua.
+The three synchronizers listen on the **same port inside the container**
+(`9090`) and publish on different host ports, so that all three can run side by
+side. The same goes for the gateways: each one has its own.
 
-| Serviço | Porta interna | Publicada no host |
+| Service | Internal port | Published on the host |
 | :--- | :--- | :--- |
 | 9Router | `20128` | `8081` |
 | OmniRoute | `20128` | `8082` |
 | LiteLLM | `4000` | `8083` |
-| 9RTKSync (painel) | `9090` | `9091` |
-| OminiRTkSync (painel) | `9090` | `9092` |
-| LiteLlmRTKSync (painel) | `9090` | `9093` |
+| 9RTKSync (dashboard) | `9090` | `9091` |
+| OminiRTkSync (dashboard) | `9090` | `9092` |
+| LiteLlmRTKSync (dashboard) | `9090` | `9093` |
 
-A stack dos artigos (`claudegravity`) fica com a **`20128`**, a porta padrão do
-9Router. As stacks dos repositórios saem dessa faixa de propósito: assim você
-roda o artigo e os três sincronizadores ao mesmo tempo, sem conflito.
+The article stack (`claudegravity`) keeps **`20128`**, the default 9Router port.
+The repository stacks deliberately move out of that range: that way you can run
+the article and all three synchronizers at the same time, with no conflict.
 
-Tudo preso a `127.0.0.1`: o gateway carrega credenciais reais e não deve ficar
-acessível na rede local. Para mudar qualquer uma, altere o lado esquerdo do
-mapeamento no compose — o lado direito é a porta interna, que o processo escuta.
+Everything is bound to `127.0.0.1`: the gateway carries real credentials and
+must not be reachable on the local network. To change any of them, edit the left
+side of the mapping in the compose file — the right side is the internal port,
+the one the process listens on.
 
 
 Official multi-architecture Docker images (`linux/amd64` and `linux/arm64`) are published automatically to the GitHub Container Registry (GHCR):
@@ -292,9 +292,16 @@ Dashboard capabilities:
 * Live operational metrics (Total Connections, OAuth Accounts, API Keys, Resilience Combos).
 * Six domain cards, in the same order as the sibling panels: gateway connection, scheduler, monitored connections, virtual keys, registered models, resilience combos.
 * Real-time countdown meters with visual health badges for every connection.
-* Gateway diagnostic card with millisecond latency testing (`POST /api/test-gateway`).
-* Password change modal for credential rotation (`POST /api/change-password`).
-* Manual sync trigger via REST API (`POST /api/sync` and `POST /api/cron-run`).
+* Gateway diagnostic card with millisecond latency testing.
+* Password change modal for credential rotation.
+* Manual sync trigger, from the panel or from a script.
+
+The buttons on the panel post to `/acoes/…` and answer with a redirect
+(POST-Redirect-GET), so a reload never repeats the action. The `/api/…` routes
+(`POST /api/test-gateway`, `/api/change-password`, `/api/sync`, `/api/cron-run`)
+do the same work for `curl` and for monitoring, and they answer JSON. Both exist
+on purpose; naming only the API here read as if the buttons used it, which they
+do not.
 
 ---
 
