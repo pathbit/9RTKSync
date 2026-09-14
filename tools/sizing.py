@@ -59,7 +59,7 @@ def smallest_tier(rpm, itpm, otpm):
     return "acima de Scale"
 
 
-print("### CAMINHO DE API (LiteLLM) - teto publicado, resolve numericamente")
+print("### CAMINHO DE API - teto publicado, resolve numericamente")
 for label, profile in PROFILES.items():
     print(f"\nperfil {label}: R_h={profile['rate_per_hour']} req/h, "
           f"T_in={profile['billable_input']} tok/req, T_out={profile['output']} tok/req, "
@@ -71,7 +71,7 @@ for label, profile in PROFILES.items():
             print(f"{size:>5} {factor:>5.1f} {simultaneous:>6.1f} {rpm:>7.0f} "
                   f"{itpm:>10,.0f} {otpm:>9,.0f}  {smallest_tier(rpm, itpm, otpm)}")
 
-print("\n\n### CAMINHO DE ASSINATURA (9Router/OmniRoute) - C_janela e [A MEDIR]")
+print("\n\n### CAMINHO DE ASSINATURA (9Router) - C_janela e [A MEDIR]")
 print("A unidade aqui e TOKEN TOTAL (entrada cacheada inclusa): o medidor da")
 print("assinatura nao publica o que conta, e a calibracao de Settings > Usage")
 print("so pode ser feita contra o total trafegado.\n")
