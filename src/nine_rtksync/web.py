@@ -1,4 +1,4 @@
-"""Multi-threaded HTTP server and embedded web dashboard for 9RTKSync."""
+"""Multi-threaded HTTP server and embedded web dashboard."""
 
 import base64
 import json
@@ -16,13 +16,12 @@ from typing import Any, Callable, Dict, Optional
 
 from urllib.parse import parse_qs, urlparse
 
-from ..catalog import CATALOGO_INACESSIVEL, build_registered_models, fetch_gateway_models
-from ..config import Settings
-from ..i18n import DEFAULT_LANGUAGE, normalize_language, translate
-from ..prefs import get_preference, resolve_prefs_path, set_preference
-from .. import protecao, sessao, sso
-from ..database import get_active_api_key, get_all_api_keys, get_all_combos, get_all_connections
-from ..models import ConnectionRecord, VirtualKeyRecord
+from .gateway import CATALOGO_INACESSIVEL, carregar_painel, esquece_o_catalogo, sondar
+from .config import Settings
+from .i18n import DEFAULT_LANGUAGE, normalize_language, translate
+from .identidade import NOME_DO_GATEWAY, NOME_DO_PRODUTO
+from .prefs import get_preference, resolve_prefs_path, set_preference
+from . import protecao, sessao, sso
 from .render import (
     render_dashboard,
     render_landing_page,
@@ -43,7 +42,6 @@ ROUTER_PROBE_TTL_SECONDS = 30.0
 # Tempo de vida do catalogo de modelos. Ele sai de uma requisicao HTTP ao
 # gateway e muda de hora em hora, nao a cada F5: sem cache, cada recarga da
 # pagina -- e cada POST-Redirect-GET de acao -- pagaria a viagem de novo.
-MODEL_CATALOG_TTL_SECONDS = 120.0
 
 # Erros de socket que significam apenas "o cliente desistiu antes de ler a
 # resposta" — comportamento normal de health check, não falha do servidor.
@@ -54,8 +52,6 @@ _router_probe_cache: Dict[str, tuple] = {}
 _router_probe_lock = threading.Lock()
 
 # Cache do catalogo de modelos, pela mesma razao e com a mesma disciplina.
-_model_catalog_cache: Dict[str, tuple] = {}
-_model_catalog_lock = threading.Lock()
 
 
 class QuietThreadingHTTPServer(ThreadingHTTPServer):
@@ -82,7 +78,7 @@ class DashboardHandler(BaseHTTPRequestHandler):
     # version_string() tambem e sobrescrito porque o BaseHTTPRequestHandler
     # concatena server_version + " " + sys_version: com sys_version vazio, a
     # resposta sai com um espaco sobrando no fim do valor.
-    server_version = "9RTKSync"
+    server_version = NOME_DO_PRODUTO
     sys_version = ""
 
     def version_string(self) -> str:
@@ -162,7 +158,7 @@ class DashboardHandler(BaseHTTPRequestHandler):
             translate("auth.required", lang), translate("auth.required_body", lang)
         )
         self.send_response(HTTPStatus.UNAUTHORIZED)
-        self.send_header("WWW-Authenticate", 'Basic realm="9RTKSync Dashboard"')
+        self.send_header("WWW-Authenticate", f'Basic realm="{NOME_DO_PRODUTO} Dashboard"')
         self.send_header("Content-Type", "text/html; charset=utf-8")
         self.send_header("Content-Length", str(len(payload)))
         self.send_header("Cache-Control", "no-store")
@@ -392,8 +388,7 @@ class DashboardHandler(BaseHTTPRequestHandler):
         """
         with _router_probe_lock:
             _router_probe_cache.clear()
-        with _model_catalog_lock:
-            _model_catalog_cache.clear()
+        esquece_o_catalogo()
 
     def handle_dashboard_action(self, route: str, raw_body: bytes) -> None:
         """Executa uma acao do painel e devolve o usuario para a pagina renderizada."""
@@ -504,7 +499,13 @@ class DashboardHandler(BaseHTTPRequestHandler):
         self.send_error(HTTPStatus.NOT_FOUND, "Acao nao encontrada")
 
     def probe_router(self) -> bool:
-        """Sonda o gateway com cache: o resultado vale por ROUTER_PROBE_TTL_SECONDS."""
+        """Sonda o gateway com cache: o resultado vale por ROUTER_PROBE_TTL_SECONDS.
+
+        Quem faz a pergunta e `gateway.sondar`, que sabe o endereco e o que conta
+        como "respondeu" NESTE gateway. Aqui fica so o cache -- que e comum aos
+        tres, porque o /healthz e chamado a cada 15s pelo Docker e sem cache cada
+        chamada pagaria uma requisicao de saida.
+        """
         if not self.router_url:
             return True
 
@@ -514,17 +515,7 @@ class DashboardHandler(BaseHTTPRequestHandler):
             if cached_ok is not None and (now - cached_at) < ROUTER_PROBE_TTL_SECONDS:
                 return cached_ok
 
-        try:
-            req = urllib.request.Request(
-                self.router_url,
-                headers={"User-Agent": "9RTKSync-Healthcheck/1.0"},
-            )
-            with urllib.request.urlopen(req, timeout=3.0) as resp:
-                router_ok = resp.status < 500
-        except urllib.error.HTTPError as e:
-            router_ok = e.code < 500
-        except Exception:
-            router_ok = False
+        router_ok = bool(sondar(self.router_url)["online"])
 
         with _router_probe_lock:
             _router_probe_cache[self.router_url] = (time.time(), router_ok)
@@ -903,57 +894,21 @@ class DashboardHandler(BaseHTTPRequestHandler):
         """Idioma em vigor: preferencia salva no SQLite, senao o padrao (ingles)."""
         return normalize_language(get_preference(self.prefs_path(), "language", DEFAULT_LANGUAGE))
 
-    def read_model_catalog(self, connections: list) -> tuple:
-        """Catalogo de modelos do gateway, com cache e (estado, modelos) de volta.
-
-        A chave usada para autenticar a leitura vive so nesta pilha de chamada:
-        entra no cabecalho Authorization dentro de fetch_gateway_models e nao e
-        guardada no cache, que memoriza apenas o resultado.
-        """
-        if not self.db_path or not os.path.exists(self.db_path):
-            return CATALOGO_INACESSIVEL, []
-
-        agora = time.time()
-        with _model_catalog_lock:
-            gravado_em, resultado = _model_catalog_cache.get(self.router_url, (0.0, None))
-            if resultado is not None and (agora - gravado_em) < MODEL_CATALOG_TTL_SECONDS:
-                estado, entradas = resultado
-                return estado, build_registered_models(entradas, connections)
-
-        try:
-            estado, entradas = fetch_gateway_models(
-                self.router_url, get_active_api_key(self.db_path)
-            )
-        except Exception:
-            # Banco travado, arquivo sumindo no meio da leitura: o cartao cai
-            # para o estado vazio em vez de levar a pagina inteira junto.
-            estado, entradas = CATALOGO_INACESSIVEL, []
-
-        with _model_catalog_lock:
-            _model_catalog_cache[self.router_url] = (agora, (estado, entradas))
-        return estado, build_registered_models(entradas, connections)
-
     def collect_dashboard_state(self) -> Dict[str, Any]:
         """Le tudo o que a pagina precisa. Roda no servidor: o SQLite nunca sai daqui."""
-        conns: list = []
-        combos: list = []
-        keys: list = []
-        db_exists = bool(self.db_path and os.path.exists(self.db_path))
-        if db_exists:
-            try:
-                conns = get_all_connections(self.db_path)
-            except Exception:
-                conns = []
-            try:
-                combos = get_all_combos(self.db_path)
-            except Exception:
-                combos = []
-            try:
-                keys = [VirtualKeyRecord.from_row(k) for k in get_all_api_keys(self.db_path)]
-            except Exception:
-                keys = []
-
-        models_state, models = self.read_model_catalog(conns)
+        # UMA chamada, com as oito chaves de sempre: daqui para baixo o painel
+        # nao sabe se o gateway guarda isso em SQLite ou responde por HTTP.
+        painel = carregar_painel(self.settings) if self.settings else {
+            "connections": [], "keys": [], "models": [], "combos": [],
+            "findings": [], "counters": {}, "probe": {},
+            "model_states": {"catalog": CATALOGO_INACESSIVEL, "db": "missing"},
+        }
+        conns = painel["connections"]
+        combos = painel["combos"]
+        keys = painel["keys"]
+        models = painel["models"]
+        models_state = painel["model_states"]["catalog"]
+        db_exists = painel["model_states"]["db"] == "ok"
 
         start_t = time.time()
         online = self.probe_router()
@@ -1032,17 +987,11 @@ class DashboardHandler(BaseHTTPRequestHandler):
         self.write_body(content)
 
     def serve_api_status(self):
-        conns = []
-        combos = []
-        if self.db_path and os.path.exists(self.db_path):
-            try:
-                conns = get_all_connections(self.db_path)
-            except Exception:
-                conns = []
-            try:
-                combos = get_all_combos(self.db_path)
-            except Exception:
-                combos = []
+        # A MESMA costura do painel: a API nao tem uma segunda leitura do
+        # gateway, ou as duas telas divergiriam sem ninguem notar.
+        painel = carregar_painel(self.settings) if self.settings else {"connections": [], "combos": []}
+        conns = painel["connections"]
+        combos = painel["combos"]
 
         cron_info = self.cron_scheduler.get_status() if self.cron_scheduler else {"active": False}
         is_default = self.settings.is_default_password() if self.settings else False
@@ -1096,7 +1045,7 @@ class DashboardHandler(BaseHTTPRequestHandler):
         try:
             req = urllib.request.Request(
                 router_target,
-                headers={"User-Agent": "9RTKSync-Tester/1.0"},
+                headers={"User-Agent": f"{NOME_DO_PRODUTO}-Tester/1.0"},
             )
             with urllib.request.urlopen(req, timeout=5.0) as resp:
                 status_code = resp.status
@@ -1110,16 +1059,9 @@ class DashboardHandler(BaseHTTPRequestHandler):
         latency_ms = int((time.time() - start_t) * 1000)
 
         db_exists = bool(self.db_path and os.path.exists(self.db_path))
-        conns_count = 0
-        combos_count = 0
-        if db_exists:
-            try:
-                conns = get_all_connections(self.db_path)
-                combos = get_all_combos(self.db_path)
-                conns_count = len(conns)
-                combos_count = len(combos)
-            except Exception:
-                pass
+        contagem = (carregar_painel(self.settings) if self.settings else {}).get("counters", {})
+        conns_count = contagem.get("connections", 0)
+        combos_count = contagem.get("combos", 0)
 
         result = {
             "success": gateway_ok and db_exists,
@@ -1132,7 +1074,7 @@ class DashboardHandler(BaseHTTPRequestHandler):
             "dbPath": self.db_path,
             "connectionsCount": conns_count,
             "combosCount": combos_count,
-            "message": "9Router gateway and SQLite database are 100% operational!" if (gateway_ok and db_exists) else "Failed to connect to 9Router or database unavailable",
+            "message": f"{NOME_DO_GATEWAY} gateway and SQLite database are 100% operational!" if (gateway_ok and db_exists) else f"Failed to connect to {NOME_DO_GATEWAY} or database unavailable",
         }
 
         body = json.dumps(result, ensure_ascii=False, indent=2).encode("utf-8")

@@ -14,7 +14,7 @@ import urllib.request
 from nine_rtksync import i18n
 from nine_rtksync.config import Settings
 from nine_rtksync.models import ConnectionRecord
-from nine_rtksync.web import render, server as web_server
+from nine_rtksync import render, web as web_server
 
 # Faixas de emoji que não podem aparecer na interface (o padrão é fonte de ícones).
 EMOJI_PATTERN = re.compile(

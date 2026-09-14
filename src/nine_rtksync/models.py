@@ -1,4 +1,4 @@
-"""Data models for connections, credentials, and health states in 9Router."""
+"""Data models for connections, credentials, and health states in the gateway."""
 
 import json
 import time
@@ -13,7 +13,7 @@ EXPIRING_SOON_SECONDS = 900
 
 @dataclass
 class ConnectionRecord:
-    """Represents a row from the providerConnections table in 9Router SQLite."""
+    """Represents a row from the providerConnections table in the gateway store."""
     id: str
     provider: str
     name: str
@@ -77,7 +77,7 @@ class ConnectionRecord:
     def base_url(self) -> Optional[str]:
         """Provider base URL, when declared.
 
-        9Router keeps it inside providerSpecificData, not at the root of data --
+        The gateway keeps it inside providerSpecificData, not at the root of data --
         reading only the root is why local instances used to show no models.
         """
         specific = self.data.get("providerSpecificData")
@@ -99,7 +99,7 @@ class ConnectionRecord:
     def egress_binding(self) -> Optional[str]:
         """Proxy pool this connection egresses through, when one is bound.
 
-        Read-only: the binding is owned by the gateway, and 9Router keeps it in
+        Read-only: the binding is owned by the gateway, which keeps it in
         ``providerSpecificData`` as ``proxyPoolId`` plus the per-connection
         ``connectionProxyEnabled`` switch. It is surfaced here because an
         account that shares one outbound address with every other account is
@@ -228,7 +228,7 @@ class ConnectionRecord:
             # Never probed yet: say so instead of claiming health nobody verified.
             return "active" if probed == "valid" else "not_checked"
 
-        # 9Router writes "ok", OmniRoute writes "active"; both mean healthy.
+        # One gateway writes "ok", another writes "active"; both mean healthy.
         return "active" if self.data.get("testStatus") in ("ok", "active", "success") else "unknown"
 
 
@@ -270,7 +270,7 @@ class VirtualKeyRecord:
 
     @property
     def machine_id(self) -> str:
-        """A maquina a que o 9Router amarrou esta chave.
+        """A maquina a que o gateway amarrou esta chave.
 
         Nao e credencial: e uma impressao digital da instalacao, que o proprio
         gateway devolve em ``POST /api/keys``. Aparece no modal porque e ela que
@@ -282,7 +282,7 @@ class VirtualKeyRecord:
     def revoked(self) -> bool:
         """Se o gateway ja recusa esta chave.
 
-        O ``apiKeys`` do 9Router tem uma bandeira so (``isActive``): nao ha
+        O ``apiKeys`` do gateway tem uma bandeira so (``isActive``): nao ha
         coluna de revogacao nem de banimento, entao desativada e o unico caminho
         pelo qual uma chave deixa de ser aceita aqui.
         """
@@ -290,7 +290,7 @@ class VirtualKeyRecord:
 
     @property
     def remaining_seconds(self) -> Optional[int]:
-        """Sempre ``None``: a chave do 9Router nao tem prazo.
+        """Sempre ``None``: a chave deste gateway nao tem prazo.
 
         Nao ha coluna de expiracao em ``apiKeys`` -- a chave vale ate alguem
         desativa-la. Isso e "sem expiracao" de verdade, e nao o dado ausente com

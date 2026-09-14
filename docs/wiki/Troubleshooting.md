@@ -34,7 +34,7 @@ REFRESH_MARGIN=1800     # renew during the last 30 minutes
 ## `BrokenPipeError: [Errno 32] Broken pipe` in `serve_healthz`
 
 ```
-File "/app/src/nine_rtksync/web/server.py", line 116, in serve_healthz
+File "/app/src/nine_rtksync/web.py", line 116, in serve_healthz
     self.wfile.write(b"OK")
 BrokenPipeError: [Errno 32] Broken pipe
 ```

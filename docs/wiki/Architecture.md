@@ -31,14 +31,15 @@ state the gateway keeps about its own connections.
 | `cli.py` | Argument parsing, bootstrap of logging and the recovery hash, entry points. |
 | `daemon.py` | `SyncEngine.sync_all()` — one full pass over every connection. |
 | `cron.py` | Background scheduler; keeps per-cycle history with the actions each produced. |
-| `database.py` | SQLite reads and writes against `providerConnections` and `combos`. |
+| `gateway.py` | Everything that knows what THIS gateway stores and where: SQLite reads and writes against `providerConnections` and `combos`, the HTTP model catalogue, and the `carregar_painel()` seam. |
+| `identidade.py` | The only file that may differ from the sibling panels: name, gateway, palette, icon, ports, cookie names. |
 | `models.py` | `ConnectionRecord` and its derived properties (`is_oauth`, `is_local`, `remaining_seconds`, `health_status`). |
 | `normalizer.py` | Credential-format self-healing and stale-lock removal. |
 | `discovery.py` | Finds provider credentials on the host filesystem. |
 | `providers/` | One handler per credential family: Google, generic OAuth, API key, local. |
 | `combos.py` | Keeps the fallback combos registered and up to date. |
-| `web/server.py` | HTTP server, routing, actions. |
-| `web/render.py` | Server-side HTML rendering. |
+| `web.py` | HTTP server, routing, actions. |
+| `render.py` | Server-side HTML rendering. |
 | `i18n.py`, `prefs.py` | Interface language and its SQLite persistence. |
 | `auth.py`, `logs.py` | Credential rules and the persistent file log. |
 

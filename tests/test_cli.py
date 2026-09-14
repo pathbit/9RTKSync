@@ -9,7 +9,7 @@ from unittest.mock import patch
 
 from nine_rtksync.cli import main, print_status_table
 from nine_rtksync.config import Settings
-from nine_rtksync.database import upsert_connection
+from nine_rtksync.gateway import upsert_connection
 
 
 class TestCLI(unittest.TestCase):

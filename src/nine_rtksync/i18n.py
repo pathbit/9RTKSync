@@ -1,4 +1,4 @@
-"""Internacionalização da interface do 9RTKSync.
+"""Internacionalização da interface do painel.
 
 Idioma padrão: inglês. Português e espanhol são opcionais e escolhidos pelo
 seletor de bandeiras no topo do painel. A escolha é persistida em SQLite
@@ -8,6 +8,8 @@ Chave ausente numa tradução cai para o inglês, nunca para a chave crua.
 """
 
 from typing import Dict
+
+from .identidade import NOME_DO_GATEWAY
 
 DEFAULT_LANGUAGE = "en"
 
@@ -20,7 +22,7 @@ LANGUAGES: Dict[str, tuple] = {
 
 TRANSLATIONS: Dict[str, Dict[str, str]] = {
     "en": {
-        "app.subtitle": "9Router Universal Token &amp; Connection Synchronizer",
+        "app.subtitle": f"{NOME_DO_GATEWAY} Universal Token &amp; Connection Synchronizer",
         "app.gateway_unset": "gateway not configured",
         "action.refresh": "Refresh",
         "action.access": "Access",
@@ -167,12 +169,11 @@ TRANSLATIONS: Dict[str, Dict[str, str]] = {
         "language.save_failed": "Could not save the language preference: the panel storage is not writable.",
         "language.label": "Language",
         "action.settings": "Settings",
-        "sso.title": "Single sign-on",
-        "sso.intro": "Optional. With nothing configured the panel behaves exactly as it does today, "
-                     "and the local form is never removed from the sign-in screen.",
-        "sso.tab_oidc": "OIDC",
-        "sso.tab_saml": "SAML2",
-        "sso.enabled_label": "Identity provider",
+        "sso.title": "Single sign-on (SSO)",
+        "sso.intro": "Optional. The local user and password form never leaves the screen, so a provider outage does not lock you out.",
+        "sso.tab_oidc": "OpenID Connect",
+        "sso.tab_saml": "SAML 2.0",
+        "sso.provider": "Active provider",
         "sso.enabled_help": "One provider at a time. Two enabled at once is what makes a response "
                             "from one acceptable as if it came from the other.",
         "sso.enabled_off": "Disabled (password only)",
@@ -188,28 +189,26 @@ TRANSLATIONS: Dict[str, Dict[str, str]] = {
                            "character for character.",
         "sso.client_id": "Client ID",
         "sso.client_secret": "Client secret",
-        "sso.secret_stored": "A secret is stored.",
+        "sso.secret_stored": "A secret is stored. Leave the field blank to keep it.",
         "sso.secret_missing": "No secret stored yet.",
-        "sso.secret_from_env": "Defined by the OIDC_CLIENT_SECRET environment variable; change it "
-                               "in the environment and restart.",
+        "sso.secret_from_env": "The secret comes from the OIDC_CLIENT_SECRET environment variable. Change it there and restart the service.",
         "sso.secret_keep_help": "It is never shown again. Leave this field empty to keep the "
                                 "current one.",
         "sso.secret_failed": "Could not store the client secret: the panel storage is not writable.",
         "sso.scopes": "Scopes",
         "sso.scopes_help": "Space separated. The default covers the e-mail address and the profile.",
         "sso.allowed_domains": "Allowed domains",
-        "sso.allowed_emails": "Allowed e-mails",
+        "sso.allowed_emails": "Allowed e-mail addresses",
         "sso.allowlist_help": "Comma separated, and mandatory: without it, every account at the "
                               "provider can sign in here.",
         "sso.current_password": "Current panel password",
         "sso.current_password_help": "Required on top of the session: a stolen cookie must not be "
                                      "enough to point the panel at a hostile provider.",
-        "sso.save": "Save single sign-on settings",
+        "sso.save": "Save SSO settings",
         "sso.saved": "Single sign-on settings saved.",
         "sso.save_failed": "Could not save the settings.",
         "sso.wrong_password": "Wrong panel password.",
-        "sso.disabled_by_env": "Single sign-on is switched off by SSO_DISABLED in the environment. "
-                               "The local form is the only way in until that variable is removed.",
+        "sso.disabled_by_env": "Single sign-on is switched off by the SSO_DISABLED environment variable. The settings below are kept, but no SSO route answers.",
         "sso.need_base_url": "The public panel address must be a scheme and a host, with no path, "
                              "and https outside the loopback.",
         "sso.need_issuer": "The issuer is required and must use https outside the loopback.",
@@ -221,23 +220,19 @@ TRANSLATIONS: Dict[str, Dict[str, str]] = {
                               "needs a named tunnel or Tailscale, with a fixed address.",
         "sso.sign_in_with": "Sign in with {provider}",
         "sso.or": "or",
-        "sso.failed": "Could not sign in through the identity provider.",
+        "sso.failed": "Could not sign in through the identity provider. Try again, or use your user and password.",
         "sso.landing_title": "Signing in...",
         "sso.landing_body": "The session has been created. Taking you to the dashboard.",
         "sso.idp_entity_id": "Identity provider entity ID",
         "sso.idp_sso_url": "Identity provider sign-on URL",
         "sso.idp_cert": "Identity provider X.509 certificate",
         "sso.idp_cert_help": "Public certificate, safe to store next to the rest of the settings.",
-        "sso.saml_unavailable": "SAML2 is not available in this image. It needs the python3-saml "
-                                "package, which is not installed: the signature is made over "
-                                "exclusive canonicalisation, the standard library has no RSA "
-                                "verification, and the defence against a signed assertion moved "
-                                "inside the tree is library work.",
+        "sso.saml_unavailable": "SAML 2.0 is not available in this image. It needs a library that signs and verifies XML, and doing it by hand would accept forged assertions in silence. The fields are here so the settings are ready when the image ships with it.",
         "sso.saml_pending": "The SAML2 library is installed, but this version of the panel only "
                             "signs in through OIDC. SAML2 sign-in is the next phase.",
     },
     "pt": {
-        "app.subtitle": "9Router Universal Token &amp; Connection Synchronizer",
+        "app.subtitle": f"{NOME_DO_GATEWAY} Universal Token &amp; Connection Synchronizer",
         "app.gateway_unset": "gateway não configurado",
         "action.refresh": "Atualizar",
         "action.access": "Acesso",
@@ -385,11 +380,10 @@ TRANSLATIONS: Dict[str, Dict[str, str]] = {
         "language.label": "Idioma",
         "action.settings": "Configurações",
         "sso.title": "Entrada federada (SSO)",
-        "sso.intro": "Opcional. Sem configuração o painel funciona exatamente como hoje, e o "
-                     "formulário local nunca sai da tela de entrada.",
-        "sso.tab_oidc": "OIDC",
-        "sso.tab_saml": "SAML2",
-        "sso.enabled_label": "Provedor de identidade",
+        "sso.intro": "Opcional. O formulário de usuário e senha nunca sai da tela, então o provedor cair não tranca ninguém do lado de fora.",
+        "sso.tab_oidc": "OpenID Connect",
+        "sso.tab_saml": "SAML 2.0",
+        "sso.provider": "Provedor ativo",
         "sso.enabled_help": "Um provedor por vez. Dois ligados ao mesmo tempo é o que faz a "
                             "resposta de um ser aceita como se fosse a do outro.",
         "sso.enabled_off": "Desligado (somente senha)",
@@ -405,10 +399,9 @@ TRANSLATIONS: Dict[str, Dict[str, str]] = {
                            "caractere a caractere.",
         "sso.client_id": "Identificador do cliente",
         "sso.client_secret": "Segredo do cliente",
-        "sso.secret_stored": "Há um segredo guardado.",
+        "sso.secret_stored": "Há um segredo guardado. Deixe o campo em branco para mantê-lo.",
         "sso.secret_missing": "Ainda não há segredo guardado.",
-        "sso.secret_from_env": "Definido pela variável de ambiente OIDC_CLIENT_SECRET; altere no "
-                               "ambiente e reinicie.",
+        "sso.secret_from_env": "O segredo vem da variável de ambiente OIDC_CLIENT_SECRET. Altere-o lá e reinicie o serviço.",
         "sso.secret_keep_help": "Ele nunca é exibido de volta. Deixe este campo em branco para "
                                 "manter o atual.",
         "sso.secret_failed": "Não foi possível gravar o segredo do cliente: o armazenamento do "
@@ -423,11 +416,10 @@ TRANSLATIONS: Dict[str, Dict[str, str]] = {
         "sso.current_password_help": "Exigida além da sessão: um cookie roubado não pode bastar "
                                      "para apontar o painel a um provedor hostil.",
         "sso.save": "Salvar configuração de SSO",
-        "sso.saved": "Configuração de SSO salva.",
+        "sso.saved": "Configuração de entrada federada salva.",
         "sso.save_failed": "Não foi possível salvar a configuração.",
         "sso.wrong_password": "Senha do painel incorreta.",
-        "sso.disabled_by_env": "O SSO está desligado por SSO_DISABLED no ambiente. O formulário "
-                               "local é a única entrada enquanto a variável não for removida.",
+        "sso.disabled_by_env": "A entrada federada está desligada pela variável de ambiente SSO_DISABLED. A configuração abaixo é mantida, mas nenhuma rota de SSO responde.",
         "sso.need_base_url": "O endereço público do painel precisa ser esquema e host, sem "
                              "caminho, e https fora do loopback.",
         "sso.need_issuer": "O emissor é obrigatório e precisa usar https fora do loopback.",
@@ -439,23 +431,19 @@ TRANSLATIONS: Dict[str, Dict[str, str]] = {
                               "nomeado ou Tailscale, com endereço fixo.",
         "sso.sign_in_with": "Entrar com {provider}",
         "sso.or": "ou",
-        "sso.failed": "Não foi possível entrar pelo provedor de identidade.",
+        "sso.failed": "Não foi possível entrar pelo provedor de identidade. Tente de novo ou use usuário e senha.",
         "sso.landing_title": "Entrando...",
         "sso.landing_body": "A sessão foi criada. Levando você ao painel.",
         "sso.idp_entity_id": "Identificador do provedor de identidade",
         "sso.idp_sso_url": "Endereço de entrada do provedor de identidade",
         "sso.idp_cert": "Certificado X.509 do provedor de identidade",
         "sso.idp_cert_help": "Certificado público, que pode ficar ao lado do resto da configuração.",
-        "sso.saml_unavailable": "SAML2 não está disponível nesta imagem. Ele exige o pacote "
-                                "python3-saml, que não está instalado: a assinatura é sobre "
-                                "canonicalização exclusiva, a biblioteca padrão não verifica RSA, "
-                                "e a defesa contra a asserção assinada deslocada dentro da árvore "
-                                "é trabalho de biblioteca.",
+        "sso.saml_unavailable": "SAML 2.0 não está disponível nesta imagem. Ele exige uma biblioteca que assina e confere XML, e fazer isso à mão aceitaria asserção forjada em silêncio. Os campos ficam aqui para que a configuração já esteja pronta quando a imagem trouxer a biblioteca.",
         "sso.saml_pending": "A biblioteca de SAML2 está instalada, mas esta versão do painel só "
                             "entra por OIDC. A entrada por SAML2 é a próxima fase.",
     },
     "es": {
-        "app.subtitle": "9Router Universal Token &amp; Connection Synchronizer",
+        "app.subtitle": f"{NOME_DO_GATEWAY} Universal Token &amp; Connection Synchronizer",
         "app.gateway_unset": "gateway no configurado",
         "action.refresh": "Actualizar",
         "action.access": "Acceso",
@@ -603,11 +591,10 @@ TRANSLATIONS: Dict[str, Dict[str, str]] = {
         "language.label": "Idioma",
         "action.settings": "Configuración",
         "sso.title": "Inicio de sesión federado (SSO)",
-        "sso.intro": "Opcional. Sin configuración el panel funciona exactamente como hoy, y el "
-                     "formulario local nunca desaparece de la pantalla de entrada.",
-        "sso.tab_oidc": "OIDC",
-        "sso.tab_saml": "SAML2",
-        "sso.enabled_label": "Proveedor de identidad",
+        "sso.intro": "Opcional. El formulario de usuario y contraseña nunca sale de la pantalla, así que una caída del proveedor no deja a nadie fuera.",
+        "sso.tab_oidc": "OpenID Connect",
+        "sso.tab_saml": "SAML 2.0",
+        "sso.provider": "Proveedor activo",
         "sso.enabled_help": "Un proveedor a la vez. Dos activos al mismo tiempo es lo que hace que "
                             "la respuesta de uno se acepte como si fuera la del otro.",
         "sso.enabled_off": "Desactivado (solo contraseña)",
@@ -623,10 +610,9 @@ TRANSLATIONS: Dict[str, Dict[str, str]] = {
                            "carácter por carácter.",
         "sso.client_id": "Identificador del cliente",
         "sso.client_secret": "Secreto del cliente",
-        "sso.secret_stored": "Hay un secreto guardado.",
+        "sso.secret_stored": "Hay un secreto guardado. Deje el campo en blanco para conservarlo.",
         "sso.secret_missing": "Todavía no hay un secreto guardado.",
-        "sso.secret_from_env": "Definido por la variable de entorno OIDC_CLIENT_SECRET; cámbielo "
-                               "en el entorno y reinicie.",
+        "sso.secret_from_env": "El secreto viene de la variable de entorno OIDC_CLIENT_SECRET. Cámbielo allí y reinicie el servicio.",
         "sso.secret_keep_help": "Nunca se vuelve a mostrar. Deje este campo vacío para conservar "
                                 "el actual.",
         "sso.secret_failed": "No se pudo guardar el secreto del cliente: el almacenamiento del "
@@ -640,13 +626,11 @@ TRANSLATIONS: Dict[str, Dict[str, str]] = {
         "sso.current_password": "Contraseña actual del panel",
         "sso.current_password_help": "Exigida además de la sesión: una cookie robada no puede "
                                      "bastar para apuntar el panel a un proveedor hostil.",
-        "sso.save": "Guardar la configuración de SSO",
-        "sso.saved": "Configuración de SSO guardada.",
+        "sso.save": "Guardar configuración de SSO",
+        "sso.saved": "Configuración de inicio de sesión federado guardada.",
         "sso.save_failed": "No se pudo guardar la configuración.",
         "sso.wrong_password": "Contraseña del panel incorrecta.",
-        "sso.disabled_by_env": "El SSO está desactivado por SSO_DISABLED en el entorno. El "
-                               "formulario local es la única entrada mientras no se quite esa "
-                               "variable.",
+        "sso.disabled_by_env": "El inicio de sesión federado está apagado por la variable de entorno SSO_DISABLED. La configuración de abajo se conserva, pero ninguna ruta de SSO responde.",
         "sso.need_base_url": "La dirección pública del panel debe ser esquema y host, sin ruta, y "
                              "https fuera del loopback.",
         "sso.need_issuer": "El emisor es obligatorio y debe usar https fuera del loopback.",
@@ -658,18 +642,14 @@ TRANSLATIONS: Dict[str, Dict[str, str]] = {
                               "El SSO exige un túnel con nombre o Tailscale, con dirección fija.",
         "sso.sign_in_with": "Entrar con {provider}",
         "sso.or": "o",
-        "sso.failed": "No se pudo entrar por el proveedor de identidad.",
+        "sso.failed": "No se pudo entrar por el proveedor de identidad. Inténtelo de nuevo o use usuario y contraseña.",
         "sso.landing_title": "Entrando...",
         "sso.landing_body": "La sesión fue creada. Llevándolo al panel.",
         "sso.idp_entity_id": "Identificador del proveedor de identidad",
         "sso.idp_sso_url": "Dirección de entrada del proveedor de identidad",
         "sso.idp_cert": "Certificado X.509 del proveedor de identidad",
         "sso.idp_cert_help": "Certificado público, que puede quedar junto al resto de la configuración.",
-        "sso.saml_unavailable": "SAML2 no está disponible en esta imagen. Exige el paquete "
-                                "python3-saml, que no está instalado: la firma es sobre "
-                                "canonicalización exclusiva, la biblioteca estándar no verifica "
-                                "RSA, y la defensa contra la aserción firmada movida dentro del "
-                                "árbol es trabajo de biblioteca.",
+        "sso.saml_unavailable": "SAML 2.0 no está disponible en esta imagen. Requiere una biblioteca que firme y verifique XML, y hacerlo a mano aceptaría aserciones falsificadas en silencio. Los campos quedan aquí para que la configuración esté lista cuando la imagen traiga la biblioteca.",
         "sso.saml_pending": "La biblioteca de SAML2 está instalada, pero esta versión del panel "
                             "solo entra por OIDC. La entrada por SAML2 es la próxima fase.",
     },

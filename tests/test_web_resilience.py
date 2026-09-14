@@ -10,7 +10,7 @@ import unittest
 import urllib.request
 
 from nine_rtksync.config import Settings
-from nine_rtksync.web import server as web_server
+from nine_rtksync import web as web_server
 
 
 class TestHealthzResilience(unittest.TestCase):
@@ -115,7 +115,7 @@ class TestQuietHandleError(unittest.TestCase):
     """handle_error nao pode imprimir traceback quando o cliente apenas desconectou.
 
     Regressao do erro reportado em producao:
-        File ".../web/server.py", line 116, in serve_healthz
+        File ".../web.py", line 116, in serve_healthz
             self.wfile.write(b"OK")
         BrokenPipeError: [Errno 32] Broken pipe
     """

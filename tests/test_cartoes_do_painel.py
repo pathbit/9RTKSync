@@ -17,10 +17,10 @@ tentação, ao portar, é esconder o que não tem dado.
 
 import unittest
 
-from nine_rtksync.catalog import build_registered_models, fetch_gateway_models
+from nine_rtksync.gateway import build_registered_models, fetch_gateway_models
 from nine_rtksync.i18n import LANGUAGES, translate
 from nine_rtksync.models import ConnectionRecord, VirtualKeyRecord
-from nine_rtksync.web import render
+from nine_rtksync import render
 
 # A ordem acordada para os três painéis. A chave é o título traduzido de cada
 # cartão, porque é isso que o operador vê.

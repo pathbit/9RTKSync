@@ -1,4 +1,4 @@
-"""Renderização server-side do dashboard do 9RTKSync.
+"""Renderização server-side do dashboard.
 
 Todo o HTML é montado aqui, no servidor, com os dados já embutidos. O navegador
 nunca consulta o banco: ele recebe a página pronta. Isso mantém o SQLite
@@ -13,12 +13,25 @@ import html
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
-from ..i18n import DEFAULT_LANGUAGE, LANGUAGES, normalize_language, translate
+from .i18n import DEFAULT_LANGUAGE, LANGUAGES, normalize_language, translate
+from .identidade import (
+    COR_DO_FAVICON,
+    GLIFO_DO_FAVICON,
+    ICONE_DO_PRODUTO,
+    NOME_DO_PRODUTO,
+    PALETA,
+    PROVEDOR_DO_GATEWAY,
+)
 
 # Icone da aba, embutido como data URI: /favicon.ico responde 401 atras do
 # Basic Auth, entao um arquivo servido deixaria a aba sem icone ate o
 # operador autenticar -- e a pagina de erro nunca teria icone nenhum.
-FAVICON = "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='7' fill='%23102422'/><g transform='translate(6 6) scale(1.25)' fill='%23ffffff'><path d='M11.251.068a.5.5 0 0 1 .227.58L9.677 6.5H13a.5.5 0 0 1 .364.843l-8 8.5a.5.5 0 0 1-.842-.49L6.323 9.5H3a.5.5 0 0 1-.364-.843l8-8.5a.5.5 0 0 1 .615-.09z'/></g></svg>"
+FAVICON = (
+    "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'>"
+    f"<rect width='32' height='32' rx='7' fill='{COR_DO_FAVICON}'/>"
+    "<g transform='translate(6 6) scale(1.25)' fill='%23ffffff'>"
+    f"{GLIFO_DO_FAVICON}</g></svg>"
+)
 
 BOOTSTRAP_CSS = "https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
 BOOTSTRAP_ICONS = "https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css"
@@ -33,10 +46,44 @@ GOOGLE_FONTS = (
 FONT_STACK = "'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif"
 MONO_STACK = "'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace"
 
-# Quem emite a chave virtual. A coluna "Provedor" da tabela de chaves nao tem um
-# provedor de nuvem para mostrar -- quem emitiu foi o proprio gateway -- e deixa-la
-# vazia desalinharia a tabela das outras duas, que usam a mesma casca.
-PROVEDOR_DO_GATEWAY = "9router"
+# Papéis cromáticos na ordem em que o `:root` os declara, e o que cada um pinta.
+# Os VALORES vêm de identidade.py; a ORDEM e a explicação são comuns aos três
+# painéis — é nisto que a casca ser a mesma consiste.
+PAPEIS_DO_TEMA = (
+    ("--bg", "fundo da pagina"),
+    ("--surface", "cartao"),
+    ("--surface-2", "cabecalho de cartao, chip"),
+    ("--line", "borda"),
+    ("--accent", "acao primaria"),
+    ("--accent-2", "acao secundaria, realce"),
+    ("--brand-a", "marca, inicio do gradiente"),
+    ("--brand-b", "marca, fim do gradiente"),
+    ("--text-dim", "texto secundario"),
+)
+
+# Cor do texto: NÃO é papel cromático — vale o mesmo nos três painéis, e por
+# isso fica aqui e não na identidade.
+COR_DO_TEXTO = "#e6e8ee"
+
+# Papéis que as páginas servidas antes do login precisam: login e erro têm
+# cartão, borda e um botão, e mais nada.
+PAPEIS_ANTES_DO_LOGIN = ("--bg", "--surface", "--line", "--accent")
+
+
+def tokens_do_tema(recuo: str = "      ") -> str:
+    """Monta as linhas `--token: valor;` do bloco `:root` do painel."""
+    linhas = [
+        f"{recuo}{token}:{' ' * max(1, 12 - len(token))}{PALETA[token]};   /* {papel} */"
+        for token, papel in PAPEIS_DO_TEMA
+    ]
+    linhas.append(f"{recuo}--text:      {COR_DO_TEXTO};")
+    return "\n".join(linhas)
+
+
+def tokens_antes_do_login() -> str:
+    """A fatia do tema que as páginas anteriores ao login usam, em uma linha."""
+    valores = " ".join(f"{token}: {PALETA[token]};" for token in PAPEIS_ANTES_DO_LOGIN)
+    return f"{valores} --text: {COR_DO_TEXTO};"
 
 # Teto de linhas desenhadas no cartao de modelos. Cada linha traz um modal junto,
 # e o catalogo de um gateway com muitos provedores ligados passa de meio milhar
@@ -225,7 +272,7 @@ def render_notice_page(title: str, body: str, link_label: str = "") -> bytes:
   <title>{esc(title)}</title>
   <link rel="stylesheet" href="{BOOTSTRAP_CSS}">
   <link rel="stylesheet" href="{BOOTSTRAP_ICONS}">
-  <style>body {{ background: #091413; }}</style>
+  <style>body {{ background: {PALETA['--bg']}; }}</style>
 </head>
 <body class="d-flex align-items-center justify-content-center" style="min-height:100vh">
   <div class="card text-center" style="max-width:34rem">
@@ -260,10 +307,10 @@ def render_landing_page(lang: str = DEFAULT_LANGUAGE) -> bytes:
   <meta name="robots" content="noindex, nofollow">
   <meta http-equiv="refresh" content="0;url=/">
   <link rel="icon" href="{FAVICON}">
-  <title>9RTKSync</title>
+  <title>{NOME_DO_PRODUTO}</title>
   <link rel="stylesheet" href="{BOOTSTRAP_CSS}">
   <link rel="stylesheet" href="{BOOTSTRAP_ICONS}">
-  <style>body {{ background: #091413; }}</style>
+  <style>body {{ background: {PALETA['--bg']}; }}</style>
 </head>
 <body class="d-flex align-items-center justify-content-center" style="min-height:100vh">
   <div class="card text-center" style="max-width:30rem">
@@ -383,12 +430,11 @@ def render_login_page(
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="robots" content="noindex, nofollow">
   <link rel="icon" href="{FAVICON}">
-  <title>9RTKSync</title>
+  <title>{NOME_DO_PRODUTO}</title>
   <link rel="stylesheet" href="{BOOTSTRAP_CSS}">
   <link rel="stylesheet" href="{BOOTSTRAP_ICONS}">
   <style>
-    :root {{ --bg: #091413; --surface: #102422; --line: #1e413d;
-             --accent: #2fb8a4; --text: #e6e8ee; }}
+    :root {{ {tokens_antes_do_login()} }}
     body {{ background: var(--bg); color: var(--text); font-family: {FONT_STACK}; }}
     .card {{ background: var(--surface); border: 1px solid var(--line); }}
     .btn-primary {{ --bs-btn-bg: var(--accent); --bs-btn-border-color: var(--accent);
@@ -403,7 +449,7 @@ def render_login_page(
   <main class="card" style="max-width:24rem;width:100%">
     <div class="card-body p-4">
       <h1 class="h5 mb-1 d-flex align-items-center gap-2">
-        <i class="bi bi-shield-lock" aria-hidden="true"></i>9RTKSync
+        <i class="bi bi-shield-lock" aria-hidden="true"></i>{NOME_DO_PRODUTO}
       </h1>
       <p class="text-secondary small mb-4">{esc(translate("auth.login_intro", lang))}</p>
       {aviso}
@@ -559,7 +605,7 @@ def render_sso_modal(sso_view: Optional[Dict[str, Any]], lang: str) -> str:
 
     aba_oidc = f"""
               <div class="mb-3">
-                <label class="form-label small" for="sso_enabled">{esc(translate("sso.enabled_label", lang))}</label>
+                <label class="form-label small" for="sso_enabled">{esc(translate("sso.provider", lang))}</label>
                 <select class="form-select form-select-sm" id="sso_enabled" name="enabled">
                   <option value=""{"" if ligado else " selected"}>{esc(translate("sso.enabled_off", lang))}</option>
                   <option value="oidc"{" selected" if ligado else ""}>{esc(translate("sso.enabled_oidc", lang))}</option>
@@ -773,9 +819,9 @@ def render_timestamp_cell(carimbo: Optional[str], lang: str, icone: str) -> str:
 def key_state_label(key: Any, lang: str) -> str:
     """Se o gateway ainda aceita esta chave.
 
-    O ``apiKeys`` do 9Router tem uma bandeira so, ``isActive``: nao existe aqui
-    a distincao entre revogada e banida que o irmao OminiRTkSync mostra, e
-    inventar os rotulos faria a tela prometer um dado que o banco nao guarda.
+    A tabela de chaves do gateway pode ter uma bandeira so: nesse caso nao
+    existe a distincao entre revogada e banida, e inventar os rotulos faria a
+    tela prometer um dado que o gateway nao guarda.
     """
     if key.revoked:
         return translate("keys.disabled", lang)
@@ -796,9 +842,9 @@ def render_key_details(key: Any, modal_id: str, lang: str) -> str:
         (translate("table.remaining", lang), render_remaining_seconds(key.remaining_seconds, lang)),
         (translate("table.issued_at", lang),
          f'<span class="font-monospace">{esc(format_timestamp(key.issued_at))}</span>'),
-        # O 9Router nao guarda restricao de modelo por chave: toda chave que ele
-        # emite alcanca o catalogo inteiro, e dizer isso e mais util do que
-        # omitir a linha e deixar a pergunta em aberto.
+        # Quando o gateway nao guarda restricao de modelo por chave, toda chave
+        # que ele emite alcanca o catalogo inteiro -- e dizer isso e mais util
+        # do que omitir a linha e deixar a pergunta em aberto.
         (translate("table.model_access", lang), esc(translate("keys.access_all", lang))),
         (translate("table.source", lang),
          f'<span class="font-monospace">{esc(key.machine_id)}</span>' if key.machine_id
@@ -1281,7 +1327,7 @@ def render_dashboard(
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="robots" content="noindex, nofollow">
   <link rel="icon" href="{FAVICON}">
-  <title>9RTKSync</title>
+  <title>{NOME_DO_PRODUTO}</title>
   <link rel="stylesheet" href="{BOOTSTRAP_CSS}">
   <link rel="stylesheet" href="{BOOTSTRAP_ICONS}">
   <link rel="stylesheet" href="{FLAG_ICONS}">
@@ -1291,21 +1337,12 @@ def render_dashboard(
   <style>
     /* ------------------------------------------------------------------
        Identidade visual: os tres paineis da familia RTKSync tem a MESMA
-       estrutura e a MESMA folha de estilo. O que muda e o valor destes
-       tokens -- verde-petroleo, quase preto.
-       Trocar o produto e trocar estas oito linhas, nada mais.
+       estrutura e a MESMA folha de estilo. O que muda e o valor dos nove
+       papeis cromaticos, e eles vivem todos em identidade.py.
+       Trocar o produto e trocar aquele arquivo, nada mais.
        ------------------------------------------------------------------ */
     :root {{
-      --bg:        #091413;   /* fundo da pagina */
-      --surface:   #102422;   /* cartao */
-      --surface-2: #16302d;   /* cabecalho de cartao, chip */
-      --line:      #1e413d;   /* borda */
-      --accent:    #2fb8a4;   /* acao primaria */
-      --accent-2:  #57d6c4;   /* acao secundaria, realce */
-      --brand-a:   #12806f;   /* marca, inicio do gradiente */
-      --brand-b:   #2fb8a4;   /* marca, fim do gradiente */
-      --text:      #e6e8ee;
-      --text-dim:  #9fb8b3;
+{tokens_do_tema()}
     }}
     body {{ background: var(--bg); color: var(--text); }}
     .card {{ background: var(--surface); border: 1px solid var(--line); }}
@@ -1389,9 +1426,9 @@ def render_dashboard(
 
     <header class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-4">
       <div class="d-flex align-items-center gap-3">
-        <span class="brand-mark"><i class="bi bi-lightning-charge-fill" aria-hidden="true"></i></span>
+        <span class="brand-mark"><i class="bi {ICONE_DO_PRODUTO}" aria-hidden="true"></i></span>
         <div>
-          <h1 class="h4 mb-0">9RTKSync</h1>
+          <h1 class="h4 mb-0">{NOME_DO_PRODUTO}</h1>
           <p class="text-secondary small mb-0 font-monospace">
             {esc(router_url or translate("app.gateway_unset", lang))}
           </p>

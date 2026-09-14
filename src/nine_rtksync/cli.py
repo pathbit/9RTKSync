@@ -1,13 +1,14 @@
-"""Command line interface (CLI) for 9RTKSync."""
+"""Command line interface (CLI) for this synchronizer."""
 
 import argparse
 import sys
 
 from .config import Settings
 from .daemon import SyncEngine, run_daemon
-from .database import get_all_combos, get_all_connections
+from .identidade import NOME_DO_GATEWAY, NOME_DO_PRODUTO
+from .gateway import get_all_combos, get_all_connections
 from .logs import setup_logging
-from .web.server import start_web_server
+from .web import start_web_server
 
 
 def print_status_table(settings: Settings):
@@ -59,13 +60,13 @@ def print_status_table(settings: Settings):
 
 def main():
     parser = argparse.ArgumentParser(
-        prog="9RTKSync",
-        description="9RTKSync · 9Router Universal Token & Connection Synchronizer",
+        prog=NOME_DO_PRODUTO,
+        description=f"{NOME_DO_PRODUTO} · {NOME_DO_GATEWAY} Universal Token & Connection Synchronizer",
     )
     parser.add_argument(
         "--db-path",
         dest="db_path",
-        help="Path to 9Router SQLite database (data.sqlite)",
+        help=f"Path to {NOME_DO_GATEWAY} SQLite database (data.sqlite)",
     )
     parser.add_argument(
         "--status",

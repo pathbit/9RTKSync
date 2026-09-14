@@ -294,7 +294,7 @@ See [Dashboard](Dashboard) for what each badge does mean.
 ### Where the answer actually is
 
 **1. The database.** Validated against a synthetic database with the real schema
-`[FONTE: src/nine_rtksync/database.py:26 — the providerConnections columns]`,
+`[FONTE: src/nine_rtksync/gateway.py:64 — the providerConnections columns]`,
 run on 2026-09-12:
 
 ```bash
@@ -352,7 +352,7 @@ grep -o "modelLock_[a-z0-9.-]*" /app/logs/9rtksync.log | sort | uniq -c | sort -
 its provider, type, health and remaining validity, plus the registered combos and
 their cascades, and `/api/status` returns the state as JSON — with `healthStatus`,
 `expiresAtMs` and `remainingSeconds` per connection
-`[FONTE: src/nine_rtksync/web/server.py:549-561]`. Note what is **not** in that
+`[FONTE: src/nine_rtksync/web.py:549-561]`. Note what is **not** in that
 payload: neither `rateLimitedUntil` nor `modelLock_*` is exported. For the
 capacity question, use the SQL above or the log.
 
@@ -688,7 +688,7 @@ grep -o "modelLock_[a-z0-9.-]*" /app/logs/9rtksync.log | sort | uniq -c | sort -
 Sem SQL, `9rtksync --status` imprime cada conexão com provedor, tipo, saúde e
 validade restante, mais os combos e suas cascatas, e `/api/status` devolve
 `healthStatus`, `expiresAtMs` e `remainingSeconds`
-`[FONTE: src/nine_rtksync/web/server.py:549-561]` — mas repare no que **não** vai
+`[FONTE: src/nine_rtksync/web.py:549-561]` — mas repare no que **não** vai
 nesse payload: nem `rateLimitedUntil` nem `modelLock_*`. Para capacidade, use o
 SQL ou o log.
 

@@ -12,7 +12,7 @@ que a coluna era estreita e a palavra estava quebrando.
 
 import unittest
 
-from nine_rtksync.web.render import format_timestamp
+from nine_rtksync.render import format_timestamp
 
 
 class CarimboDeTempo(unittest.TestCase):

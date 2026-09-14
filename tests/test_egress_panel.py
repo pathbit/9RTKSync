@@ -17,7 +17,7 @@ import json
 import unittest
 
 from nine_rtksync.models import ConnectionRecord
-from nine_rtksync.web import render
+from nine_rtksync import render
 
 
 def conexao(nome: str, **dados) -> ConnectionRecord:

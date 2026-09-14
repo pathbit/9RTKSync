@@ -1,4 +1,4 @@
-"""Self-healing and format normalization for credentials and rate-limit locks in 9Router SQLite."""
+"""Self-healing and format normalization for credentials and rate-limit locks in the gateway store."""
 
 import time
 from datetime import datetime, timezone
@@ -41,7 +41,7 @@ def parse_iso_or_str_to_ms(val: Any) -> Optional[int]:
 def normalize_connection_data(raw_data: Dict[str, Any]) -> Tuple[bool, Dict[str, Any], List[str]]:
     """
     Inspect connection data dictionary and apply self-healing:
-    1. Fix expiresAt stored as an ISO string by 9Router to numeric epoch in ms.
+    1. Fix expiresAt stored as an ISO string by the gateway to numeric epoch in ms.
     2. Remove rate-limit locks (rateLimitedUntil) if cooldown has elapsed.
     3. Clear legacy backoffLevel penalties.
 

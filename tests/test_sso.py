@@ -34,7 +34,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 from nine_rtksync import protecao, sessao, sso
 from nine_rtksync.config import Settings
-from nine_rtksync.web.server import start_web_server
+from nine_rtksync.web import start_web_server
 
 CLIENT_ID = "cliente-do-painel"
 CLIENT_SECRET = "segredo-de-teste-que-nunca-sai-daqui"
@@ -1009,15 +1009,15 @@ class SamlDeclaradoEAusente(unittest.TestCase):
         exatamente o primeiro passo da próxima fase, e um teste que ficasse
         vermelho nesse momento reprovaria a suíte por um motivo que o código não
         causou. Quem instalar a biblioteca vai encontrar o aviso da tela dizendo
-        que a entrada por SAML2 ainda não está escrita -- que é a verdade.
+        que a entrada por SAML 2.0 ainda não está escrita -- que é a verdade.
         """
         self.assertIsInstance(sso.saml_disponivel(), bool)
 
     def test_a_aba_saml_diz_por_que_esta_desabilitada(self):
-        from nine_rtksync.web.render import render_sso_modal
+        from nine_rtksync.render import render_sso_modal
 
         modal = render_sso_modal({"saml_disponivel": sso.saml_disponivel()}, "pt")
-        self.assertIn("SAML2", modal)
+        self.assertIn("SAML 2.0", modal)
         # Campos desenhados e traduzidos, mas travados: nada de aceitar uma
         # configuração que o painel não sabe usar.
         self.assertIn("sso_saml_idp_cert", modal)
@@ -1027,7 +1027,7 @@ class SamlDeclaradoEAusente(unittest.TestCase):
         """Rota que existe e sempre recusa é pior que rota que não existe."""
         fonte = (
             os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-            + "/src/nine_rtksync/web/server.py"
+            + "/src/nine_rtksync/web.py"
         )
         with open(fonte, encoding="utf-8") as f:
             texto = f.read()

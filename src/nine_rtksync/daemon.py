@@ -1,4 +1,4 @@
-"""Continuous synchronization and universal self-healing daemon for 9Router."""
+"""Continuous synchronization and universal self-healing daemon for the gateway."""
 
 import os
 import signal
@@ -11,13 +11,14 @@ from typing import Any, Dict, List
 from .combos import sync_combos
 from .config import Settings
 from .cron import CronScheduler
-from .database import get_all_connections, update_connection_data
+from .identidade import NOME_DO_PRODUTO
+from .gateway import get_all_connections, update_connection_data
 from .discovery import HostDiscoveryEngine
 from .logs import get_logger
 from .models import ConnectionRecord
 from .normalizer import normalize_connection_data
 from .providers import ApiKeyProvider, BaseProvider, GenericOAuthProvider, GoogleProvider, LocalProvider
-from .web.server import start_web_server
+from .web import start_web_server
 
 
 # Prefixes that describe a failure. Emitting everything at INFO meant that
@@ -201,7 +202,7 @@ def run_daemon(settings: Settings):
 
     def handle_signal(sig, frame):
         nonlocal running
-        print(f"\n[!] Signal {sig} received. Shutting down 9RTKSync gracefully...", flush=True)
+        print(f"\n[!] Signal {sig} received. Shutting down {NOME_DO_PRODUTO} gracefully...", flush=True)
         running = False
 
     signal.signal(signal.SIGINT, handle_signal)
@@ -229,7 +230,7 @@ def run_daemon(settings: Settings):
     cron_scheduler = CronScheduler(
         sync_callback=engine.sync_all,
         interval_seconds=settings.cron_interval,
-        name="9RTKSync-CronScheduler",
+        name=f"{NOME_DO_PRODUTO}-CronScheduler",
     )
 
     # Start embedded web server if enabled
@@ -258,5 +259,5 @@ def run_daemon(settings: Settings):
         time.sleep(1)
 
     cron_scheduler.stop()
-    print("[*] 9RTKSync terminated cleanly.", flush=True)
+    print(f"[*] {NOME_DO_PRODUTO} terminated cleanly.", flush=True)
 

@@ -1,9 +1,9 @@
-"""Manager for resilience and fallback combos in 9Router SQLite database."""
+"""Manager for resilience and fallback combos in the gateway SQLite database."""
 
 import json
 from typing import List, Tuple
 
-from .database import upsert_combos
+from .gateway import upsert_combos
 
 
 def get_default_combos(module: str = "all") -> List[Tuple[str, str, str, str]]:

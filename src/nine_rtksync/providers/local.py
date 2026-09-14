@@ -6,6 +6,7 @@ import urllib.request
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional, Tuple
 
+from ..identidade import NOME_DO_PRODUTO
 from ..models import ConnectionRecord
 from .base import BaseProvider
 
@@ -40,7 +41,7 @@ class LocalProvider(BaseProvider):
         for path in MODEL_CATALOG_PATHS:
             target = f"{origin}{path}" if path.startswith("/api") else f"{root}{path}"
             try:
-                req = urllib.request.Request(target, headers={"User-Agent": "9RTKSync-LocalProbe/1.0"})
+                req = urllib.request.Request(target, headers={"User-Agent": f"{NOME_DO_PRODUTO}-LocalProbe/1.0"})
                 if api_key:
                     req.add_header("Authorization", f"Bearer {api_key}")
                 with urllib.request.urlopen(req, timeout=PROBE_TIMEOUT_SECONDS) as resp:

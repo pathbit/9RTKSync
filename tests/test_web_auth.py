@@ -10,7 +10,7 @@ import urllib.request
 import unittest
 
 from nine_rtksync.config import Settings
-from nine_rtksync.web.server import start_web_server
+from nine_rtksync.web import start_web_server
 
 
 class TestWebAuth(unittest.TestCase):

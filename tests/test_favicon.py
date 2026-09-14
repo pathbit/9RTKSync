@@ -12,10 +12,15 @@ autenticação.
 
 import pathlib
 import re
+import sys
 import unittest
 
 RAIZ = pathlib.Path(__file__).resolve().parent.parent
-RENDER = RAIZ / "src" / "nine_rtksync" / "web" / "render.py"
+sys.path.insert(0, str(RAIZ / "src"))
+
+from nine_rtksync import render  # noqa: E402
+
+RENDER = RAIZ / "src" / "nine_rtksync" / "render.py"
 
 
 class TodaPaginaTemIcone(unittest.TestCase):
@@ -24,11 +29,14 @@ class TodaPaginaTemIcone(unittest.TestCase):
 
     def test_o_icone_e_uma_constante_unica(self):
         """Duplicar o SVG em cada página é como as duas cópias divergem."""
-        # re.M porque assertRegex usa re.search sem flags, e `^` sozinho só
-        # casaria no primeiro caractere do arquivo.
         self.assertIsNotNone(
-            re.search(r'^FAVICON = "data:image/svg\+xml,', self.fonte, re.M),
+            re.search(r"^FAVICON = ", self.fonte, re.M),
             "o ícone tem de ser uma constante no topo do módulo",
+        )
+        self.assertEqual(
+            self.fonte.count("data:image/svg+xml"),
+            1,
+            "o SVG do ícone aparece mais de uma vez: é assim que as cópias divergem",
         )
 
     def test_todo_documento_servido_declara_o_icone(self):
@@ -44,10 +52,8 @@ class TodaPaginaTemIcone(unittest.TestCase):
 
     def test_o_icone_nao_depende_de_requisicao(self):
         """Um href para arquivo seria buscado, e /favicon.ico responde 401."""
-        achado = re.search(r'^FAVICON = "([^"]+)"', self.fonte, re.M)
-        self.assertIsNotNone(achado)
         self.assertTrue(
-            achado.group(1).startswith("data:"),
+            render.FAVICON.startswith("data:"),
             "o ícone precisa ser data URI: qualquer URL seria buscada e levaria 401",
         )
 

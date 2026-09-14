@@ -23,12 +23,7 @@ import secrets
 import time
 from typing import Optional
 
-NOME_DO_COOKIE = "9rtksync_sessao"
-
-# Cookie de ida e volta do SSO. Ele NÃO é uma sessão: guarda apenas o que
-# precisa sobreviver à viagem até o provedor de identidade (state, nonce e o
-# verificador do PKCE), vive dez minutos e é consumido no retorno.
-NOME_DO_COOKIE_DE_ESTADO = "9rtksync_estado_sso"
+from .identidade import NOME_DO_COOKIE, NOME_DO_COOKIE_DE_ESTADO
 
 # Oito horas: um turno de trabalho. Depois disso o operador entra de novo.
 VALIDADE_EM_SEGUNDOS = 8 * 60 * 60
@@ -56,6 +51,21 @@ def _assina_estado(carga: str) -> str:
     ).hexdigest()
 
 
+def _assinatura_confere(apresentada: str, esperada: str) -> bool:
+    """Compara em tempo constante e em BYTES, sem levantar com texto hostil.
+
+    A comparação não pode vazar, pelo tempo que leva, quantos caracteres do
+    início bateram. E tem de ser em bytes: o cabeçalho Cookie é decodificado em
+    latin-1, e um único byte acima de 0x7f na assinatura faria `compare_digest`
+    levantar TypeError — uma exceção não tratada numa rota pública, com o
+    conteúdo escolhido pelo visitante.
+    """
+    return hmac.compare_digest(
+        str(apresentada or "").encode("utf-8", "surrogatepass"),
+        esperada.encode("ascii"),
+    )
+
+
 def emitir(usuario: str, agora: Optional[float] = None) -> str:
     """Devolve o valor do cookie para um usuário já autenticado."""
     expira = int((agora if agora is not None else time.time()) + VALIDADE_EM_SEGUNDOS)
@@ -73,9 +83,7 @@ def usuario_da_sessao(valor: str, agora: Optional[float] = None) -> Optional[str
         carga = base64.urlsafe_b64decode(codificada.encode("ascii")).decode("utf-8")
     except Exception:
         return None
-    # compare_digest: a comparação não pode vazar, pelo tempo que leva, quantos
-    # caracteres do início bateram.
-    if not hmac.compare_digest(assinatura, _assina(carga)):
+    if not _assinatura_confere(assinatura, _assina(carga)):
         return None
     if "|" not in carga:
         return None
@@ -119,6 +127,10 @@ def ler_do_cabecalho(cabecalho_cookie: str) -> str:
 
 
 # --- Cookie de estado do SSO ------------------------------------------------
+#
+# Fica aqui, e não num módulo próprio, para que o segredo que assina continue
+# sendo UM só por processo: dois segredos seriam duas superfícies para manter
+# em dia, e a segunda é sempre a que alguém esquece de rotacionar.
 
 
 def emitir_estado_sso(
@@ -146,7 +158,7 @@ def ler_estado_sso(valor: str, agora: Optional[float] = None) -> Optional[dict]:
         carga = base64.urlsafe_b64decode(codificada.encode("ascii")).decode("utf-8")
     except Exception:
         return None
-    if not hmac.compare_digest(assinatura, _assina_estado(carga)):
+    if not _assinatura_confere(assinatura, _assina_estado(carga)):
         return None
     partes = carga.split("|")
     if len(partes) != 4:

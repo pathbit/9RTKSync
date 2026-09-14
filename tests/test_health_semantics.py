@@ -17,7 +17,7 @@ import unittest
 from datetime import datetime, timedelta, timezone
 
 from nine_rtksync.models import ConnectionRecord
-from nine_rtksync.web.render import render_refresh_reason
+from nine_rtksync.render import render_refresh_reason
 
 
 def agora_mais(segundos: int) -> str:

@@ -38,7 +38,7 @@ import re
 import unittest
 
 RAIZ = pathlib.Path(__file__).resolve().parent.parent
-SERVIDOR = RAIZ / "src" / "nine_rtksync" / "web" / "server.py"
+SERVIDOR = RAIZ / "src" / "nine_rtksync" / "web.py"
 
 PUBLICAS = {
     "/healthz",
