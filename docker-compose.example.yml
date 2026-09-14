@@ -1,4 +1,4 @@
-name: 9router-stack
+name: 9rtksync-stack
 
 services:
   9router:
