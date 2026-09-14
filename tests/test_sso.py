@@ -1182,13 +1182,17 @@ class SamlNoModuloEAindaSemRota(unittest.TestCase):
         self.assertIn("sso_saml_idp_cert", modal)
         self.assertIn("disabled", modal)
 
-    def test_nao_ha_rota_de_saml_enquanto_web_nao_convergir(self):
-        """Rota que existe e sempre recusa é pior que rota que não existe.
+    def test_as_tres_rotas_de_saml_existem(self):
+        """O que era estado intermediário virou o estado final.
 
-        O módulo já sabe montar a AuthnRequest, validar a asserção e servir os
-        metadados -- quem ainda não sabe é o `web.py` deste painel, que não tem
-        `/sso/saml/iniciar`, `/sso/saml/acs` nem `/sso/saml/metadata`. Enquanto
-        for assim, a tela não oferece o provedor: `sso.PROVEDORES` não o aceita.
+        Este teste já afirmou o contrário -- que NÃO havia rota de SAML aqui --
+        e estava certo enquanto o `web.py` não tinha as portas: rota que existe
+        e sempre recusa é pior que rota que não existe. As três portas existem
+        agora nos três painéis, então a afirmação se inverte.
+
+        A TELA ainda não oferece o provedor neste painel: `ler_configuracao`
+        não lê os campos do IdP, e a camada que a tela usa é a que ainda não
+        convergiu com a do LiteLlmRTKSync. O núcleo e as rotas, sim.
         """
         fonte = (
             os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -1196,7 +1200,12 @@ class SamlNoModuloEAindaSemRota(unittest.TestCase):
         )
         with open(fonte, encoding="utf-8") as f:
             texto = f.read()
-        self.assertNotIn("/sso/saml/", texto)
+        for rota in ("/sso/saml/iniciar", "/sso/saml/acs", "/sso/saml/metadata"):
+            self.assertIn(
+                rota, texto,
+                f"{rota} sumiu: o módulo tem a federação inteira e o painel "
+                f"ficaria de novo com código sem porta",
+            )
 
 
 if __name__ == "__main__":
