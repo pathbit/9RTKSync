@@ -19,7 +19,7 @@ class NoRedirect(urllib.request.HTTPRedirectHandler):
 
 
 from nine_rtksync.config import Settings
-from nine_rtksync.web import server as web_server
+from nine_rtksync import web as web_server
 
 PORT = 19294
 BASE = f"http://127.0.0.1:{PORT}"

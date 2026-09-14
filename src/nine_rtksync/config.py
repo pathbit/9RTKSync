@@ -1,4 +1,4 @@
-"""Global settings and environment variable loading for 9RTKSync."""
+"""Global settings and environment variable loading for this synchronizer."""
 
 import os
 import sys
@@ -44,7 +44,7 @@ def load_dotenv(dotenv_path: str = ".env") -> None:
 
 @dataclass
 class Settings:
-    """Runtime configuration for 9RTKSync synchronizer."""
+    """Runtime configuration for this synchronizer."""
     db_path: str
     sync_interval: int = 300
     refresh_margin: int = 900
@@ -222,7 +222,7 @@ class Settings:
         ]
         valid_paths = [p for p in default_paths if p]
 
-        # SQLite database discovery for 9Router and OmniRoute
+        # SQLite database discovery for the gateway
         db_path = os.environ.get("DB_PATH", "")
         if not db_path:
             candidate_dbs = [

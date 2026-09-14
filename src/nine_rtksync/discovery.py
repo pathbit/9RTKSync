@@ -242,7 +242,7 @@ class HostDiscoveryEngine:
         }
 
     def get_credential_for_provider(self, provider: str) -> Optional[Dict[str, Any]]:
-        """Find matching credentials for a 9Router or OmniRoute provider."""
+        """Find matching credentials for a gateway provider."""
         p_lower = provider.lower()
         if p_lower in ("antigravity", "gemini-cli", "google"):
             return self.discover_google()

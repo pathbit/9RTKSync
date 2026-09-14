@@ -73,7 +73,7 @@ class GoogleProvider(BaseProvider):
             client_id = local.get("client_id") or local.get("clientId") or client_id
             client_secret = local.get("client_secret") or local.get("clientSecret") or client_secret
 
-        # Fallback: discover in 9Router provider files if running in the same container/volume
+        # Fallback: discover in the gateway provider files if running in the same container/volume
         data_dir = os.environ.get("DATA_DIR", "/app/data")
         candidate_files = [
             os.path.join(data_dir, "shared.js"),

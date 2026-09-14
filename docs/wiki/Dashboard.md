@@ -15,9 +15,22 @@ Reachable at **http://localhost:9091** (internal port 9090), behind HTTP Basic A
 | Security banner | Only while the factory password is still in use. |
 | Metric cards | Total connections, OAuth accounts, API keys, registered combos. |
 | Gateway card | Gateway URL, HTTP status, latency, database summary, **Test connection**. |
-| Scheduler card | State, next run, tokens renewed, last result, **Logs**, **Run now**. |
-| Connections table | Provider, name, type, health, remaining validity, **renewal diagnosis**. |
+| Scheduler card | State, next run, tokens renewed, last result, **Logs**. |
+| Connections table | Provider, name, type, health, remaining validity, last renewal, and a **details** button that opens the per-connection modal. |
+| Virtual keys | The keys the gateway itself issued (`apiKeys`), with the issue date and whether the gateway still accepts them. The key material is never read and never drawn. |
+| Registered models | The catalogue the gateway publishes on `/v1/models`, minus the combos. Status, remaining validity and last renewal are **inherited** from the connection that serves each model — a model has no health of its own. |
 | Resilience combos | Registered combos and their model cascade. |
+
+The six cards below the metrics are the same six, in the same order, in all three
+RTKSync panels. When this gateway has no data for one of them, the card stays on
+screen with an empty state saying why — an absent card would make two panels look
+like two different products.
+
+The model catalogue is the one card that comes from HTTP rather than from SQLite:
+9Router assembles `/v1/models` at request time, from its static provider registry
+plus the live connections, so there is no table to read. The read is authenticated
+with a key the gateway itself issued; with no active key, the card says so instead
+of claiming an empty catalogue.
 
 ---
 
@@ -29,9 +42,9 @@ Every control is a real HTTP request that redirects back to the freshly rendered
 | Control | Effect |
 | :--- | :--- |
 | **Refresh** | Plain link to `/`; re-reads the database and re-renders. |
-| **Sync now** | Runs a full synchronization pass, then reports what changed. |
-| **Run now** | Triggers one scheduler cycle immediately. |
+| **Sync now** | Runs one full scheduler cycle (`POST /acoes/cron`), then reports what changed. |
 | **Test connection** | Invalidates the 30 s probe cache and really calls the gateway. |
+| **Settings** | Opens the single sign-on screen (`POST /acoes/sso`), which asks for the current panel password on top of the session. See [Single Sign-On](Single-Sign-On). |
 
 The page is served with `Cache-Control: no-store, must-revalidate`, so a browser reload always
 hits the server.
@@ -40,8 +53,10 @@ hits the server.
 
 ## Renewal diagnosis
 
-The single most useful column. Previously the panel showed only `0 renewed`, with no way to tell
-"nothing needed renewing" from "renewal failed". Now each connection carries the reason:
+It lives in the **details modal** of each connection, opened by the button at the end of the row.
+It used to be a table column, but a whole sentence squeezed between seven columns overlapped its
+neighbour. Previously the panel showed only `0 renewed`, with no way to tell "nothing needed
+renewing" from "renewal failed". Now each connection carries the reason:
 
 | Diagnosis | Meaning |
 | :--- | :--- |

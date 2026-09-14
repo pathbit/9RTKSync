@@ -1,4 +1,4 @@
-"""Credential synchronization and auto-renewal providers for 9RTKSync."""
+"""Credential synchronization and auto-renewal providers for this synchronizer."""
 
 from .base import BaseProvider
 from .google import GoogleProvider

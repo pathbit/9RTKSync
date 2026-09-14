@@ -10,7 +10,7 @@ import unittest
 from unittest.mock import patch, MagicMock
 
 from nine_rtksync.config import Settings
-from nine_rtksync.web.server import start_web_server
+from nine_rtksync.web import start_web_server
 
 
 class TestGatewayDiag(unittest.TestCase):
@@ -56,7 +56,7 @@ class TestGatewayDiag(unittest.TestCase):
                 return mock_resp
             return orig_req(req, *args, **kwargs)
 
-        with patch("nine_rtksync.web.server.urllib.request.urlopen", side_effect=mock_urlopen):
+        with patch("nine_rtksync.web.urllib.request.urlopen", side_effect=mock_urlopen):
             url = f"http://127.0.0.1:{self.settings.web_port}/api/test-gateway"
             auth = base64.b64encode(b"admin:testpassword").decode("utf-8")
             req = urllib.request.Request(url, data=b"{}", headers={"Authorization": f"Basic {auth}"})

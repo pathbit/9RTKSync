@@ -14,7 +14,7 @@ import re
 import unittest
 
 RAIZ = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-SERVIDOR = os.path.join(RAIZ, "src", "nine_rtksync", "web", "server.py")
+SERVIDOR = os.path.join(RAIZ, "src", "nine_rtksync", "web.py")
 
 
 def respostas_do_healthz() -> set:

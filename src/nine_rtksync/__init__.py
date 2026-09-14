@@ -1,7 +1,7 @@
-"""9rtksync: 9Router Token & Connection Sync.
+"""Sincronizador universal de tokens e conexoes de um gateway de IA.
 
 Universal credential keeper, auto-healer and connection synchronization
-service for 9Router AI Gateways.
+service for the AI gateway it is paired with.
 """
 
 __version__ = "1.0.0"

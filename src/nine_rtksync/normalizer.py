@@ -1,7 +1,7 @@
-"""Self-healing and format normalization for credentials and rate-limit locks in 9Router SQLite."""
+"""Self-healing and format normalization for credentials and rate-limit locks in the gateway store."""
 
 import time
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timezone
 from typing import Any, Dict, List, Optional, Tuple
 
 
@@ -31,9 +31,17 @@ def parse_iso_or_str_to_ms(val: Any) -> Optional[int]:
         iso_clean = val.replace("Z", "+00:00")
         try:
             dt = datetime.fromisoformat(iso_clean)
-            return int(dt.timestamp() * 1000)
         except Exception:
             pass
+        else:
+            # Carimbo SEM fuso e lido como UTC, que e como os gateways gravam --
+            # o mesmo criterio de `models.parse_instant`. Deixar o Python assumir
+            # o fuso da maquina fazia este modulo e o models discordarem em horas
+            # sobre o MESMO campo: um apagava a trava de rate limit por
+            # considera-la vencida enquanto o outro ainda a desenhava na tela.
+            if dt.tzinfo is None:
+                dt = dt.replace(tzinfo=timezone.utc)
+            return int(dt.timestamp() * 1000)
 
     return None
 
@@ -41,7 +49,7 @@ def parse_iso_or_str_to_ms(val: Any) -> Optional[int]:
 def normalize_connection_data(raw_data: Dict[str, Any]) -> Tuple[bool, Dict[str, Any], List[str]]:
     """
     Inspect connection data dictionary and apply self-healing:
-    1. Fix expiresAt stored as an ISO string by 9Router to numeric epoch in ms.
+    1. Fix expiresAt stored as an ISO string by the gateway to numeric epoch in ms.
     2. Remove rate-limit locks (rateLimitedUntil) if cooldown has elapsed.
     3. Clear legacy backoffLevel penalties.
 

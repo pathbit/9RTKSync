@@ -14,7 +14,7 @@ import urllib.request
 from nine_rtksync import i18n
 from nine_rtksync.config import Settings
 from nine_rtksync.models import ConnectionRecord
-from nine_rtksync.web import render, server as web_server
+from nine_rtksync import render, web as web_server
 
 # Faixas de emoji que não podem aparecer na interface (o padrão é fonte de ícones).
 EMOJI_PATTERN = re.compile(
@@ -148,10 +148,10 @@ class TestDashboardMarkup(unittest.TestCase):
             cron={"active": True, "intervalSeconds": 300, "totalRuns": 4, "totalRenewals": 0,
                   "lastRunAt": "2026-09-12T13:46:53Z", "nextRunAt": "2026-09-12T13:51:53Z",
                   "lastResult": {"totalInspected": 7, "refreshedCount": 0, "durationMs": 5}},
-            gateway={"url": "http://9router:20128", "online": True, "statusCode": 200,
+            gateway={"url": "http://9rtk-router:20128", "online": True, "statusCode": 200,
                      "latencyMs": 9, "dbSummary": "Operacional (7 conexoes, 5 combos)"},
             db_path="/app/data/db/data.sqlite",
-            router_url="http://9router:20128",
+            router_url="http://9rtk-router:20128",
             current_user="admin",
             is_default_password=True,
             refresh_margin=900,
@@ -188,8 +188,12 @@ class TestDashboardMarkup(unittest.TestCase):
 
     def test_refresh_controls_are_present(self):
         page = self._page()
-        self.assertIn('action="/acoes/atualizar"', page)     # botão Atualizar
-        self.assertIn('action="/acoes/sincronizar"', page)   # Sincronizar agora
+        # "Atualizar" saiu da barra: recarregar e rodar o ciclo viraram um botão
+        # só ("Sync now"). A rota continua servida para quem a tenha salva.
+        self.assertIn('action="/logout"', page)              # botão Sair
+        # Sincronizar dispara pelo agendador, para que a execucao manual
+        # apareca no historico junto com as automaticas.
+        self.assertIn('action="/acoes/cron"', page)   # Sincronizar agora
         self.assertIn('action="/acoes/cron"', page)          # Executar ciclo
         self.assertIn('action="/acoes/testar-gateway"', page)
 

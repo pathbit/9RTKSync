@@ -6,7 +6,7 @@ import sqlite3
 import tempfile
 import unittest
 
-from nine_rtksync.database import (
+from nine_rtksync.gateway import (
     get_all_combos,
     get_all_connections,
     update_connection_data,

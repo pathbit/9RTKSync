@@ -10,11 +10,12 @@ Concrete symptoms, what they actually mean, and what to do.
 `REFRESH_MARGIN` (default 900 s = 15 min). A connection showing *24 min* remaining is correctly
 left alone — renewing early would burn refresh-token rotations for nothing.
 
-The dashboard states this per connection, in the **Renewal diagnosis** column:
+The dashboard states this per connection, under **Renewal diagnosis** in the details modal —
+the button at the end of the connection row:
 
 > Outside the 15 min margin: renewal expected in ~9 min
 
-**When it *is* a problem:** the diagnosis column says something else.
+**When it *is* a problem:** the diagnosis says something else.
 
 | Diagnosis | Meaning | Action |
 | :--- | :--- | :--- |
@@ -33,7 +34,7 @@ REFRESH_MARGIN=1800     # renew during the last 30 minutes
 ## `BrokenPipeError: [Errno 32] Broken pipe` in `serve_healthz`
 
 ```
-File "/app/src/nine_rtksync/web/server.py", line 116, in serve_healthz
+File "/app/src/nine_rtksync/web.py", line 116, in serve_healthz
     self.wfile.write(b"OK")
 BrokenPipeError: [Errno 32] Broken pipe
 ```
@@ -89,15 +90,15 @@ If the numbers still look wrong, the synchronizer may not be writing at all — 
 Sign in with user `admin` and the **recovery hash** as the password. Find it with:
 
 ```bash
-docker logs 9rtksync 2>&1 | grep "Recovery hash"
+docker logs 9rtk-sync 2>&1 | grep "Recovery hash"
 # or, if the log file is mounted:
-grep "Recovery hash" /app/data/logs/9rtksync.log
+grep "Recovery hash" /app/logs/9rtksync.log
 ```
 
 If the log has already rotated past it, the value is on disk:
 
 ```bash
-docker exec 9rtksync cat /app/data/.dashboard_recovery
+docker exec 9rtk-sync cat /app/data/.dashboard_recovery
 ```
 
 To pin your own instead of relying on the generated one, set `DASHBOARD_RECOVERY_HASH` and
@@ -119,7 +120,7 @@ The file log is best-effort — the synchronizer never refuses to start because 
 you will see:
 
 ```
-[LOG] File log unavailable at /app/data/logs: [Errno 13] Permission denied
+[LOG] File log unavailable at /app/logs: [Errno 13] Permission denied
 ```
 
 Fix the volume permissions, or point `LOG_DIR` somewhere writable. Events keep going to stdout

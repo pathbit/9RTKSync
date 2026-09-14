@@ -1,4 +1,4 @@
-"""Continuous synchronization and universal self-healing daemon for 9Router."""
+"""Continuous synchronization and universal self-healing daemon for the gateway."""
 
 import os
 import signal
@@ -11,13 +11,14 @@ from typing import Any, Dict, List
 from .combos import sync_combos
 from .config import Settings
 from .cron import CronScheduler
-from .database import get_all_connections, update_connection_data
+from .identidade import NOME_DO_PRODUTO
+from .gateway import get_all_connections, update_connection_data
 from .discovery import HostDiscoveryEngine
 from .logs import get_logger
 from .models import ConnectionRecord
 from .normalizer import normalize_connection_data
 from .providers import ApiKeyProvider, BaseProvider, GenericOAuthProvider, GoogleProvider, LocalProvider
-from .web.server import start_web_server
+from .web import start_web_server
 
 
 # Prefixes that describe a failure. Emitting everything at INFO meant that
@@ -82,8 +83,16 @@ class SyncEngine:
 
     def _sync_all_locked(self) -> Dict[str, Any]:
         if not os.path.exists(self.settings.db_path):
-            log_msg("ERROR", f"SQLite database not found at: {self.settings.db_path}")
-            return {"success": False, "error": "db_not_found"}
+            # O gateway cria o banco ao ser usado pela primeira vez. Ate la,
+            # o arquivo nao existir e o estado NORMAL de uma stack recem
+            # subida -- nao uma falha. Relatar como erro pintava o painel de
+            # vermelho no primeiro minuto de uso e ensinava o operador a
+            # ignorar o indicador, que e o oposto do que ele serve.
+            log_msg("INFO", f"Aguardando o gateway criar o banco em: {self.settings.db_path}")
+            return {"success": True, "waiting_for_gateway": True,
+                    "total_connections": 0, "refreshed": 0, "normalized": 0,
+                    "combos_synced": 0, "details": [],
+                    "timestamp": datetime.now(timezone.utc).isoformat()}
 
         summary = {
             "timestamp": datetime.now(timezone.utc).isoformat(),
@@ -193,7 +202,7 @@ def run_daemon(settings: Settings):
 
     def handle_signal(sig, frame):
         nonlocal running
-        print(f"\n[!] Signal {sig} received. Shutting down 9RTKSync gracefully...", flush=True)
+        print(f"\n[!] Signal {sig} received. Shutting down {NOME_DO_PRODUTO} gracefully...", flush=True)
         running = False
 
     signal.signal(signal.SIGINT, handle_signal)
@@ -221,7 +230,7 @@ def run_daemon(settings: Settings):
     cron_scheduler = CronScheduler(
         sync_callback=engine.sync_all,
         interval_seconds=settings.cron_interval,
-        name="9RTKSync-CronScheduler",
+        name=f"{NOME_DO_PRODUTO}-CronScheduler",
     )
 
     # Start embedded web server if enabled
@@ -250,5 +259,5 @@ def run_daemon(settings: Settings):
         time.sleep(1)
 
     cron_scheduler.stop()
-    print("[*] 9RTKSync terminated cleanly.", flush=True)
+    print(f"[*] {NOME_DO_PRODUTO} terminated cleanly.", flush=True)
 

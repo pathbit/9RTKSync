@@ -15,12 +15,15 @@ docker pull ghcr.io/pathbit/9rtksync:latest
 A working `docker-compose.yml` alongside the gateway:
 
 ```yaml
-name: 9router-stack
+name: 9rtksync-stack
 
 services:
-  9router:
+  9rtk-router:
     image: decolua/9router:latest
-    container_name: 9router
+    container_name: 9rtk-router
+    hostname: 9rtk-router
+    networks:
+      - 9rtksync-net
     restart: unless-stopped
     ports:
       # 20128 dentro do container; 8081 no host, para nao disputar a porta
@@ -30,12 +33,23 @@ services:
       - DATA_DIR=/app/data
       - PORT=20128
       - HOSTNAME=0.0.0.0
+      # Without this line the login flow is redirected to the internal port,
+      # which does not exist on the host.
+      - NEXT_PUBLIC_BASE_URL=http://localhost:8081
     volumes:
       - 9router_data:/app/data
 
-  9rtksync:
+  9rtk-sync:
+    # Same uid as the gateway. Both share the volume, and this service creates
+    # db/ on startup: as root those directories are born root-owned and
+    # 9router -- which runs as `node` (1000) -- loses write access to its own
+    # volume ("EACCES: permission denied, mkdir '/app/data/db/backups'").
+    user: "1000:1000"
     image: ghcr.io/pathbit/9rtksync:latest
-    container_name: 9rtksync
+    container_name: 9rtk-sync
+    hostname: 9rtk-sync
+    networks:
+      - 9rtksync-net
     restart: unless-stopped
     ports:
       # Internal port 9090 (same in OminiRTKSync); published on 9091.
@@ -44,20 +58,20 @@ services:
     volumes:
       - 9router_data:/app/data
       - ${HOME}:/root/host:ro
-      - 9rtksync_logs:/app/data/logs
+      - 9rtksync_logs:/app/logs
     environment:
       - HOST_HOME=/root/host
       - DB_PATH=/app/data/db/data.sqlite
-      - ROUTER_URL=http://9router:20128
+      - ROUTER_URL=http://9rtk-router:20128
       - SYNC_INTERVAL=300
       - REFRESH_MARGIN=900
       - WEB_PORT=9090
       - DASHBOARD_USER=admin
       - DASHBOARD_PASSWORD=change-me
-      - LOG_DIR=/app/data/logs
+      - LOG_DIR=/app/logs
       - LOG_RETENTION_DAYS=30
     depends_on:
-      - 9router
+      - 9rtk-router
     healthcheck:
       test: ["CMD", "/opt/venv/bin/python3", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:9090/healthz', timeout=3)"]
       interval: 15s
@@ -68,6 +82,13 @@ services:
 volumes:
   9router_data:
   9rtksync_logs:
+
+networks:
+  9rtksync-net:
+    name: 9rtksync-net
+    # The stack gets its own network. On the default network two stacks on the
+    # same daemon resolve the same short name, and there is no telling which
+    # gateway the synchronizer connected to.
 ```
 
 Then open **http://localhost:9091**.
@@ -138,8 +159,8 @@ Or with no local install at all:
 ## Upgrading
 
 ```bash
-docker compose pull 9rtksync
-docker compose up -d 9rtksync
+docker compose pull 9rtk-sync
+docker compose up -d 9rtk-sync
 ```
 
 State that survives upgrades lives in the data volume: `.dashboard_auth.json` (screen-set
