@@ -45,7 +45,7 @@ class TestHealthzResilience(unittest.TestCase):
         cls.tmp_dir.cleanup()
 
     def setUp(self):
-        web_server._router_probe_cache.clear()
+        web_server._gateway_probe_cache.clear()
 
     def test_server_is_multi_threaded(self):
         """Sem multi-thread, uma requisição lenta bloqueia o health check do Docker."""
@@ -160,15 +160,15 @@ class TestQuietHandleError(unittest.TestCase):
         self.assertTrue(handler.close_connection)
 
 
-class TestRouterProbeCache(unittest.TestCase):
+class TestGatewayProbeCache(unittest.TestCase):
     """A sondagem ao gateway não pode acontecer a cada probe: ela faz I/O de rede de até 3s."""
 
     def setUp(self):
-        web_server._router_probe_cache.clear()
+        web_server._gateway_probe_cache.clear()
         self.calls = []
 
     def tearDown(self):
-        web_server._router_probe_cache.clear()
+        web_server._gateway_probe_cache.clear()
 
     def _handler_with_fake_probe(self, url: str):
         calls = self.calls
@@ -176,7 +176,7 @@ class TestRouterProbeCache(unittest.TestCase):
         class FakeHandler(web_server.DashboardHandler):
             router_url = url
 
-            def __init__(self):  # não instancia socket: só exercita probe_router
+            def __init__(self):  # não instancia socket: só exercita probe_gateway
                 pass
 
         original_urlopen = web_server.urllib.request.urlopen
@@ -202,28 +202,28 @@ class TestRouterProbeCache(unittest.TestCase):
         handler = self._handler_with_fake_probe("http://gateway.invalido:20128")
 
         for _ in range(10):
-            self.assertTrue(handler.probe_router())
+            self.assertTrue(handler.probe_gateway())
 
         # 10 chamadas ao /healthz, uma única ida à rede.
         self.assertEqual(len(self.calls), 1)
 
     def test_cache_expires_after_the_ttl(self):
         handler = self._handler_with_fake_probe("http://gateway.invalido:20128")
-        handler.probe_router()
+        handler.probe_gateway()
 
         # Envelhece a entrada de cache além do TTL.
-        cached_at, cached_ok = web_server._router_probe_cache["http://gateway.invalido:20128"]
-        web_server._router_probe_cache["http://gateway.invalido:20128"] = (
-            cached_at - web_server.ROUTER_PROBE_TTL_SECONDS - 1,
+        cached_at, cached_ok = web_server._gateway_probe_cache["http://gateway.invalido:20128"]
+        web_server._gateway_probe_cache["http://gateway.invalido:20128"] = (
+            cached_at - web_server.GATEWAY_PROBE_TTL_SECONDS - 1,
             cached_ok,
         )
 
-        handler.probe_router()
+        handler.probe_gateway()
         self.assertEqual(len(self.calls), 2)
 
-    def test_no_router_url_means_no_network_call(self):
+    def test_no_gateway_url_means_no_network_call(self):
         handler = self._handler_with_fake_probe("")
-        self.assertTrue(handler.probe_router())
+        self.assertTrue(handler.probe_gateway())
         self.assertEqual(len(self.calls), 0)
 
 

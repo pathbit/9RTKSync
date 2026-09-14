@@ -178,14 +178,27 @@ class ModelosCadastrados(unittest.TestCase):
         html = render.render_models_table(build_registered_models(entradas, []), "pt")
         self.assertEqual(html.count("<th "), 7)
 
-    def test_catalogo_grande_e_truncado_e_a_tela_diz_que_truncou(self):
-        entradas = [{"id": f"p/m{n}", "provider": "p"} for n in range(render.MAX_LINHAS_DE_MODELO + 7)]
-        html = render.render_models_table(build_registered_models(entradas, []), "pt")
-        self.assertIn(
-            translate("models.showing", "pt",
-                      shown=render.MAX_LINHAS_DE_MODELO, total=len(entradas)),
-            html,
+    def catalogo(self, quantos):
+        return build_registered_models(
+            [{"id": f"p/m{n}", "provider": "p"} for n in range(quantos)], []
         )
+
+    def test_catalogo_grande_vem_paginado_de_dez_em_dez(self):
+        """Paginar substituiu o corte fixo em 150 linhas.
+
+        Truncar em silêncio mentia sobre o tamanho do catálogo, e truncar
+        avisando ("mostrando 150 de 550") deixava as outras 400 linhas
+        inalcançáveis. Dez por página mostra menos e não esconde nada.
+        """
+        html = render.render_models_table(self.catalogo(25), "pt")
+        self.assertEqual(html.count('<div class="modal fade"'), 10,
+                         "a primeira página desenha dez linhas, e só")
+        self.assertIn("pag_modelos=2", html, "a barra leva à página seguinte")
+
+    def test_a_ultima_pagina_do_catalogo_traz_o_resto(self):
+        html = render.render_models_table(self.catalogo(25), "pt",
+                                          consulta={"pag_modelos": ["3"]})
+        self.assertEqual(html.count('<div class="modal fade"'), 5)
 
 
 class NenhumSegredoNaTela(unittest.TestCase):
