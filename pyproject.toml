@@ -29,6 +29,10 @@ classifiers = [
 # trabalho de biblioteca. Extra opcional: quem so usa OIDC nao carrega nada, e o
 # codigo importa a biblioteca dentro da funcao.
 saml = ["python3-saml>=1.16"]
+test = [
+    "docker>=7.0.0",
+    "testcontainers>=4.0.0",
+]
 
 [project.urls]
 Homepage = "https://github.com/pathbit/9RTKSync"
