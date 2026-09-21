@@ -35,11 +35,11 @@ from typing import Any, Callable, Dict, List, Optional
 from urllib.parse import parse_qs, urlencode, urlparse
 
 from .config import Settings
-from .i18n import DEFAULT_LANGUAGE, normalize_language, translate
+from .i18n import DEFAULT_LANGUAGE, LANGUAGES, normalize_language, translate
 from .identidade import NOME_DO_GATEWAY, NOME_DO_PRODUTO
 from .logs import get_logger
 from .prefs import get_preference, set_preference
-from . import protecao, sessao, sso
+from . import i18n, protecao, sessao, sso
 from .render import render_dashboard, render_login_page, render_notice_page
 from .gateway import CATALOGO_INACESSIVEL, carregar_painel, esquece_o_catalogo, sondar
 from .render import render_landing_page
@@ -67,6 +67,7 @@ class QuietThreadingHTTPServer(ThreadingHTTPServer):
     """Servidor multi-thread que não polui o log quando o cliente desconecta antes da hora."""
 
     daemon_threads = True
+    request_queue_size = 64
 
     def handle_error(self, request, client_address):
         exc = sys.exc_info()[1]
@@ -326,7 +327,11 @@ class DashboardHandler(BaseHTTPRequestHandler):
         # A página de login é pública por definição: exigir sessão para exibir o
         # formulário que cria a sessão seria um círculo fechado.
         if path == "/login":
-            self.serve_login_page()
+            query = parse_qs(urlparse(self.path).query)
+            mensagem = ""
+            if "logout" in query:
+                mensagem = translate("auth.logged_out", self.resolve_language())
+            self.serve_login_page(mensagem=mensagem)
             return
 
         # Servida ANTES do require_auth de propósito: o navegador ainda está com
@@ -344,7 +349,7 @@ class DashboardHandler(BaseHTTPRequestHandler):
         if path == "/sso/oidc/iniciar":
             self.inicia_oidc()
             return
-        if path == "/sso/oidc/callback":
+        if path == "/sso/oidc/callback" or path.rstrip("/") == "/sso/callback":
             self.recebe_oidc()
             return
 
@@ -368,6 +373,8 @@ class DashboardHandler(BaseHTTPRequestHandler):
             self.serve_saml_metadata()
         elif path == "/api/cron-status":
             self.serve_cron_status()
+        elif path == "/logout":
+            self.handle_logout()
         else:
             self.send_error(HTTPStatus.NOT_FOUND, "Not found")
 
@@ -418,6 +425,10 @@ class DashboardHandler(BaseHTTPRequestHandler):
             self.handle_change_password(corpo)
         elif route == "/api/cron-run":
             self.handle_api_cron_run()
+        elif route == "/api/sso/test-oidc":
+            self.handle_sso_test_oidc(corpo)
+        elif route == "/api/sso/test-saml":
+            self.handle_sso_test_saml(corpo)
         else:
             self.send_error(HTTPStatus.NOT_FOUND, "Not found")
 
@@ -532,7 +543,9 @@ class DashboardHandler(BaseHTTPRequestHandler):
         self.send_header("Content-Length", "0")
         self.end_headers()
 
-    def pagina_de_login(self, lang: str, erro: str = "", com_desafio: bool = True) -> bytes:
+    def pagina_de_login(
+        self, lang: str, erro: str = "", com_desafio: bool = True, mensagem: str = ""
+    ) -> bytes:
         """Monta o formulário de entrada com o desafio que o endereço merece.
 
         O desafio só entra depois de algumas falhas: quem acerta de primeira
@@ -543,16 +556,28 @@ class DashboardHandler(BaseHTTPRequestHandler):
         sorteado a cada recusa mudaria o corpo -- que é exatamente o sinal que
         conta ao atacante em que ponto do fluxo ele parou.
         """
-        endereco = protecao.endereco_do_cliente(self.client_address)
-        desafio, dificuldade = "", protecao.DIFICULDADE
-        if com_desafio and protecao.precisa_de_desafio(endereco):
-            desafio = protecao.novo_desafio()
-            dificuldade = protecao.dificuldade_para(endereco)
-        return render_login_page(lang, erro, desafio, dificuldade, self.nome_do_provedor_sso())
+        desafio = protecao.novo_desafio() if com_desafio else ""
+        cfg = sso.carregar(self.prefs_path(), self.sso_base_dir())
+        oidc_nome = ""
+        if cfg.oidc_esta_ligado() and sso.descobre(cfg.issuer):
+            oidc_nome = cfg.nome_do_oidc()
+        saml_nome = ""
+        if cfg.saml_esta_ligado():
+            saml_nome = cfg.nome_do_saml()
+        return render_login_page(
+            lang,
+            erro,
+            desafio,
+            protecao.DIFICULDADE,
+            oidc_nome=oidc_nome,
+            saml_nome=saml_nome,
+            senha_habilitada=cfg.senha_esta_ligada(),
+            mensagem=mensagem,
+        )
 
-    def serve_login_page(self, erro: str = "") -> None:
+    def serve_login_page(self, erro: str = "", mensagem: str = "") -> None:
         """Formulário de entrada: a porta do navegador para o painel."""
-        self.respond_html(self.pagina_de_login(self.resolve_language(), erro))
+        self.respond_html(self.pagina_de_login(self.resolve_language(), erro, mensagem=mensagem))
 
     def handle_login(self) -> None:
         """Valida a credencial do formulário e emite o cookie de sessão."""
@@ -570,17 +595,20 @@ class DashboardHandler(BaseHTTPRequestHandler):
         usuario = (campos.get("usuario") or [""])[0]
         senha = (campos.get("senha") or [""])[0]
 
-        # Depois de algumas falhas, o formulário só é aceito com a prova de
-        # trabalho resolvida. Custa CPU para quem tenta em massa e é instantânea
-        # de conferir aqui.
-        if protecao.precisa_de_desafio(endereco):
-            desafio = (campos.get("desafio") or [""])[0]
-            resposta = (campos.get("resposta") or [""])[0]
+        cfg = sso.carregar(self.prefs_path(), self.sso_base_dir())
+        if not cfg.senha_esta_ligada():
+            self.serve_login_page(translate("auth.password_disabled", self.resolve_language()))
+            return
+
+        # Desafio captcha para evitar bots automatizados.
+        desafio = (campos.get("desafio") or [""])[0]
+        resposta = (campos.get("resposta") or [""])[0]
+        if desafio or protecao.precisa_de_desafio(endereco):
             if not protecao.resposta_confere(
                 desafio, resposta, protecao.dificuldade_para(endereco)
             ):
                 protecao.anota_falha(endereco)
-                self.serve_login_page(translate("auth.login_failed", self.resolve_language()))
+                self.serve_login_page(translate("auth.challenge_failed", self.resolve_language()))
                 return
 
         # A espera cresce a cada falha seguida. É do lado do servidor: não há
@@ -606,10 +634,13 @@ class DashboardHandler(BaseHTTPRequestHandler):
 
     def handle_logout(self) -> None:
         """Apaga o cookie. O Basic Auth não tem equivalente disso."""
+        self.authenticated_user = ""
         self.send_response(HTTPStatus.FOUND)
-        self.send_header("Location", "/login")
+        self.send_header("Location", "/login?logout=1")
         self.send_header("Set-Cookie", sessao.cabecalho_para_apagar())
-        self.send_header("Cache-Control", "no-store")
+        self.send_header("Set-Cookie", sessao.cabecalho_para_apagar_estado())
+        self.send_header("Cache-Control", "no-store, no-cache, must-revalidate, max-age=0")
+        self.send_header("Pragma", "no-cache")
         self.send_header("Content-Length", "0")
         self.end_headers()
 
@@ -750,8 +781,12 @@ class DashboardHandler(BaseHTTPRequestHandler):
         if not config:
             self.recusa_sso()
             return
+        cfg_obj = sso._configuracao_de(config) if isinstance(config, dict) else config
+        if not cfg_obj.oidc_esta_ligado():
+            self.recusa_sso()
+            return
 
-        documento = sso.descobre(str(config["issuer"]))
+        documento = sso.descobre(str(cfg_obj.issuer))
         if not documento:
             # Descoberta quebrada não trava o login local: a tela volta com o
             # formulário de sempre.
@@ -764,7 +799,7 @@ class DashboardHandler(BaseHTTPRequestHandler):
         verificador = sso.novo_verificador()
         self.send_response(HTTPStatus.FOUND)
         self.send_header(
-            "Location", sso.url_de_autorizacao(config, documento, state, nonce, verificador)
+            "Location", sso.url_de_autorizacao(cfg_obj, documento, state, nonce, verificador)
         )
         self.send_header(
             "Set-Cookie",
@@ -772,7 +807,8 @@ class DashboardHandler(BaseHTTPRequestHandler):
                 sessao.emitir_estado_sso(state, nonce, verificador)
             ),
         )
-        self.send_header("Cache-Control", "no-store")
+        self.send_header("Cache-Control", "no-store, no-cache, must-revalidate")
+        self.send_header("Pragma", "no-cache")
         self.send_header("Content-Length", "0")
         self.end_headers()
 
@@ -782,6 +818,10 @@ class DashboardHandler(BaseHTTPRequestHandler):
             return
         config = self.configuracao_sso()
         if not config:
+            self.recusa_sso()
+            return
+        cfg_obj = sso._configuracao_de(config) if isinstance(config, dict) else config
+        if not cfg_obj.oidc_esta_ligado():
             self.recusa_sso()
             return
 
@@ -794,7 +834,7 @@ class DashboardHandler(BaseHTTPRequestHandler):
             if valores
         }
 
-        email, motivo = sso.conclui_login(config=config, estado=estado, parametros=parametros)
+        email, motivo = sso.conclui_login(config=config if isinstance(config, dict) else vars(cfg_obj), estado=estado, parametros=parametros)
         if not email:
             self.anota_falha_de_sso(motivo)
             protecao.anota_falha(protecao.endereco_do_cliente(self.client_address))
@@ -809,7 +849,11 @@ class DashboardHandler(BaseHTTPRequestHandler):
         if self.freio_do_sso():
             return
         config = self.configuracao_sso()
-        if not config.esta_ligado() or config.provedor != "saml":
+        if not config:
+            self.recusa_sso()
+            return
+        cfg_obj = sso._configuracao_de(config) if isinstance(config, dict) else config
+        if not cfg_obj.saml_esta_ligado():
             self.recusa_sso()
             return
         identificador = sso.novo_id_de_requisicao()
@@ -819,9 +863,10 @@ class DashboardHandler(BaseHTTPRequestHandler):
         self.send_response(HTTPStatus.FOUND)
         self.send_header(
             "Location",
-            sso.url_de_ida_saml(config, sso.monta_authn_request(config, identificador)),
+            sso.url_de_ida_saml(cfg_obj, sso.monta_authn_request(cfg_obj, identificador)),
         )
-        self.send_header("Cache-Control", "no-store")
+        self.send_header("Cache-Control", "no-store, no-cache, must-revalidate")
+        self.send_header("Pragma", "no-cache")
         self.send_header("Content-Length", "0")
         self.end_headers()
 
@@ -835,7 +880,11 @@ class DashboardHandler(BaseHTTPRequestHandler):
         if self.freio_do_sso():
             return
         config = self.configuracao_sso()
-        if not config.esta_ligado() or config.provedor != "saml":
+        if not config:
+            self.recusa_sso()
+            return
+        cfg_obj = sso._configuracao_de(config) if isinstance(config, dict) else config
+        if not cfg_obj.saml_esta_ligado():
             self.recusa_sso()
             return
 
@@ -852,8 +901,8 @@ class DashboardHandler(BaseHTTPRequestHandler):
             identificador = sso.in_response_to(resposta)
             if not sso.consome_pendente(identificador):
                 raise sso.FalhaDeSSO("InResponseTo desconhecido, gasto ou fora do prazo")
-            email = sso.processa_resposta_saml(config, resposta, identificador)
-            if not sso.email_autorizado(email, config):
+            email = sso.processa_resposta_saml(cfg_obj, resposta, identificador)
+            if not sso.email_autorizado(email, cfg_obj):
                 raise sso.FalhaDeSSO("e-mail fora da lista de autorizados")
         except sso.FalhaDeSSO as erro:
             self.anota_falha_de_sso(erro)
@@ -869,15 +918,24 @@ class DashboardHandler(BaseHTTPRequestHandler):
         Não aumenta a lista de rotas públicas: o operador baixa o arquivo
         autenticado e o entrega ao provedor, e não há pressa nenhuma nisso.
         """
+        config = self.configuracao_sso()
+        if not config:
+            self.send_error(HTTPStatus.NOT_FOUND, "Not found")
+            return
+        cfg_obj = sso._configuracao_de(config) if isinstance(config, dict) else config
+        if not cfg_obj.saml_esta_ligado():
+            self.send_error(HTTPStatus.NOT_FOUND, "Not found")
+            return
         try:
-            corpo = sso.metadata_do_sp(self.configuracao_sso()).encode("utf-8")
+            corpo = sso.metadata_do_sp(cfg_obj).encode("utf-8")
         except sso.FalhaDeSSO:
             self.send_error(HTTPStatus.NOT_FOUND, "Not found")
             return
         self.send_response(HTTPStatus.OK)
         self.send_header("Content-Type", "application/xml; charset=utf-8")
         self.send_header("Content-Length", str(len(corpo)))
-        self.send_header("Cache-Control", "no-store")
+        self.send_header("Cache-Control", "no-store, no-cache, must-revalidate")
+        self.send_header("Pragma", "no-cache")
         self.end_headers()
         self.write_body(corpo)
 
@@ -913,10 +971,16 @@ class DashboardHandler(BaseHTTPRequestHandler):
         if self.freio_do_sso():
             return
 
-        def campo(nome: str) -> str:
-            return (campos.get(nome, [""])[0] or "").strip()
+        def campo(nome: str, padrao: str = "") -> str:
+            vals = campos.get(nome)
+            if not vals:
+                return padrao
+            if "1" in vals:
+                return "1"
+            return (vals[-1] or "").strip()
 
-        if not self.confere_senha_local(campo("senha_atual")):
+        senha_informada = campo("senha_atual") or campo("senha_local") or campo("senha")
+        if not self.confere_senha_local(senha_informada):
             protecao.anota_falha(protecao.endereco_do_cliente(self.client_address))
             self.redirect_to_dashboard("danger", translate("sso.wrong_password", lang))
             return
@@ -925,47 +989,134 @@ class DashboardHandler(BaseHTTPRequestHandler):
             self.redirect_to_dashboard("warning", translate("sso.disabled_by_env", lang))
             return
 
+        if campo("desligar"):
+            sso.gravar(self.prefs_path(), {
+                sso.CHAVE_PROVEDOR: "",
+                sso.CHAVE_OIDC_HABILITADO: "0",
+                sso.CHAVE_SAML_HABILITADO: "0",
+            })
+            sso.esquece_descobertas()
+            self.redirect_to_dashboard("success", translate("sso.turned_off", lang))
+            return
+
+        enabled_val = campo("enabled").lower()
+        if "password_enabled" in campos:
+            senha_hab = "1" if campo("password_enabled") in ("1", "true", "on", "yes") else "0"
+        else:
+            senha_hab = "1"
+
+        if "oidc_enabled" in campos:
+            oidc_hab = "1" if campo("oidc_enabled") in ("1", "true", "on", "yes") else "0"
+        elif enabled_val:
+            oidc_hab = "1" if enabled_val in ("oidc", "both", "all") else "0"
+        else:
+            oidc_hab = "0"
+
+        if "saml_enabled" in campos:
+            saml_hab = "1" if campo("saml_enabled") in ("1", "true", "on", "yes") else "0"
+        elif enabled_val:
+            saml_hab = "1" if enabled_val in ("saml", "both", "all") else "0"
+        else:
+            saml_hab = "0"
+
+        if enabled_val == "" and "oidc_enabled" not in campos and "saml_enabled" not in campos:
+            oidc_hab = "0"
+            saml_hab = "0"
+
         novo = {
-            "enabled": campo("enabled"),
+            "password_enabled": senha_hab,
+            "oidc_enabled": oidc_hab,
+            "saml_enabled": saml_hab,
             "base_url": campo("base_url"),
-            "issuer": campo("issuer"),
-            "client_id": campo("client_id"),
-            "scopes": campo("scopes"),
+            "issuer": campo("issuer") or campo("oidc_issuer"),
+            "client_id": campo("client_id") or campo("oidc_client_id"),
+            "scopes": campo("scopes") or campo("oidc_scopes") or sso.ESCOPOS_PADRAO,
             "allowed_domains": campo("allowed_domains"),
             "allowed_emails": campo("allowed_emails"),
+            "idp_entity_id": campo("saml_idp_entity_id") or campo("idp_entity_id"),
+            "idp_sso_url": campo("saml_idp_sso_url") or campo("idp_sso_url"),
+            "idp_cert": campo("saml_idp_cert") or campo("idp_cert"),
         }
+        if oidc_hab == "1" and saml_hab == "1":
+            novo["enabled"] = "both"
+        elif oidc_hab == "1":
+            novo["enabled"] = "oidc"
+        elif saml_hab == "1":
+            novo["enabled"] = "saml"
+        else:
+            novo["enabled"] = ""
+
         if novo["enabled"] not in sso.PROVEDORES:
             self.redirect_to_dashboard("danger", translate("sso.save_failed", lang))
             return
 
         base_dir = self.sso_base_dir()
-        novo_segredo = campo("client_secret")
+        novo_segredo = campo("client_secret") or campo("oidc_client_secret")
         if novo_segredo and not sso.segredo_vem_do_ambiente():
             if not sso.grava_segredo(base_dir, novo_segredo):
                 self.redirect_to_dashboard("danger", translate("sso.secret_failed", lang))
                 return
-        # Campo em branco MANTÉM o segredo anterior. Quem reabre a tela para
-        # corrigir a lista de permissão não digita o segredo de novo, e apagar o
-        # que funciona por causa de um campo vazio seria desligar o SSO em
-        # silêncio.
-        if novo["enabled"] == "oidc":
-            problemas = sso.problemas_da_configuracao(novo, bool(sso.ler_segredo(base_dir)))
+
+        tem_segredo = bool(sso.ler_segredo(base_dir))
+        if oidc_hab == "1":
+            problemas = sso.problemas_da_configuracao(novo, tem_segredo)
             if problemas:
                 self.redirect_to_dashboard(
                     "danger", " ".join(translate(chave, lang) for chave in problemas)
                 )
                 return
 
+        if saml_hab == "1":
+            problemas = sso.problemas_do_saml(novo)
+            if problemas:
+                self.redirect_to_dashboard(
+                    "danger", " ".join(translate(chave, lang) for chave in problemas)
+                )
+                return
+
+        if senha_hab == "0" and oidc_hab != "1" and saml_hab != "1":
+            self.redirect_to_dashboard("danger", translate("sso.at_least_one_auth", lang))
+            return
+
         if not sso.grava_configuracao(self.prefs_path(), novo):
             self.redirect_to_dashboard("danger", translate("sso.save_failed", lang))
             return
 
-        # O emissor pode ter mudado: o documento memorizado do anterior não vale
-        # mais nada.
         sso.limpa_cache_descoberta()
         self._configuracao_sso = None
         get_logger().info("[SSO] configuração atualizada")
         self.redirect_to_dashboard("success", translate("sso.saved", lang))
+
+    def handle_sso_test_oidc(self, corpo: bytes) -> None:
+        if self.freio_do_sso():
+            return
+        try:
+            dados = json.loads(corpo.decode("utf-8", errors="replace"))
+        except Exception:
+            dados = {}
+        issuer = str(dados.get("issuer") or "").strip()
+        client_id = str(dados.get("client_id") or "").strip()
+        base_url = str(dados.get("base_url") or "").strip()
+        ok, msg = sso.testar_conexao_oidc(issuer, client_id, base_url=base_url)
+        self.respond_json(
+            json.dumps({"ok": ok, "mensagem": msg}, ensure_ascii=False).encode("utf-8")
+        )
+
+    def handle_sso_test_saml(self, corpo: bytes) -> None:
+        if self.freio_do_sso():
+            return
+        try:
+            dados = json.loads(corpo.decode("utf-8", errors="replace"))
+        except Exception:
+            dados = {}
+        entity_id = str(dados.get("saml_idp_entity_id") or dados.get("idp_entity_id") or "").strip()
+        sso_url = str(dados.get("saml_idp_sso_url") or dados.get("idp_sso_url") or "").strip()
+        cert = str(dados.get("saml_idp_cert") or dados.get("idp_cert") or "").strip()
+        base_url = str(dados.get("base_url") or "").strip()
+        ok, msg = sso.testar_conexao_saml(entity_id, sso_url, cert, base_url=base_url)
+        self.respond_json(
+            json.dumps({"ok": ok, "mensagem": msg}, ensure_ascii=False).encode("utf-8")
+        )
 
     # -- preferências -------------------------------------------------------
 
@@ -974,10 +1125,24 @@ class DashboardHandler(BaseHTTPRequestHandler):
         return self.settings.get_prefs_path() if self.settings else ""
 
     def resolve_language(self) -> str:
-        """Idioma em vigor: preferência salva no SQLite, senão o padrão (inglês)."""
-        return normalize_language(
-            get_preference(self.prefs_path(), "language", DEFAULT_LANGUAGE)
-        )
+        """Idioma em vigor: query param, cookie do navegador, SQLite, ou padrão (inglês)."""
+        query = parse_qs(urlparse(self.path).query)
+        if "lang" in query and query["lang"]:
+            lang = normalize_language(query["lang"][0])
+            if lang in LANGUAGES:
+                return lang
+        cookie_header = self.headers.get("Cookie", "")
+        for parte in cookie_header.split(";"):
+            parte = parte.strip()
+            if parte.startswith("rtksync_lang="):
+                lang = normalize_language(parte.split("=", 1)[1])
+                if lang in LANGUAGES:
+                    return lang
+        if self.settings:
+            return normalize_language(
+                get_preference(self.prefs_path(), "language", DEFAULT_LANGUAGE)
+            )
+        return DEFAULT_LANGUAGE
 
     # -- ações --------------------------------------------------------------
 
@@ -1017,19 +1182,31 @@ class DashboardHandler(BaseHTTPRequestHandler):
             self.send_error(HTTPStatus.NOT_FOUND, "Not found")
 
     def handle_language(self, campos: Dict[str, List[str]]) -> None:
-        """Grava o idioma escolhido e volta para a raiz limpa."""
+        """Grava o idioma escolhido, emite cookie e volta para a página anterior ou raiz."""
         escolhido = normalize_language((campos.get("lang", [""])[0] or "").strip())
-        # Gravar pode falhar -- disco cheio, arquivo sem permissão de escrita.
-        # Redirecionar com sucesso nesse caso deixava o operador clicando na
-        # bandeira sem entender por que a tela volta no idioma anterior: o
-        # painel dizia "pronto" e nada acontecia.
-        if not set_preference(self.prefs_path(), "language", escolhido):
-            self.redirect_to_dashboard("danger", translate("language.save_failed", escolhido))
-            return
-        # Sem aviso na volta: repetir a mensagem da ação anterior depois de
-        # trocar de idioma a mostraria no idioma antigo.
+        if self.settings:
+            set_preference(self.prefs_path(), "language", escolhido)
+        referer = self.headers.get("Referer", "")
+        destino = "/"
+        if referer:
+            try:
+                parsed = urlparse(referer)
+                if parsed.path:
+                    destino = parsed.path
+                    if parsed.query:
+                        q = parse_qs(parsed.query)
+                        q.pop("lang", None)
+                        if q:
+                            destino += "?" + urlencode(q, doseq=True)
+            except Exception:
+                destino = "/"
+
         self.send_response(HTTPStatus.SEE_OTHER)
-        self.send_header("Location", "/")
+        self.send_header("Location", destino)
+        self.send_header(
+            "Set-Cookie",
+            f"rtksync_lang={escolhido}; Path=/; Max-Age=31536000; SameSite=Lax",
+        )
         self.send_header("Content-Length", "0")
         self.end_headers()
 
