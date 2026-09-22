@@ -115,7 +115,9 @@ class TestCarimboDeRenovacao(unittest.TestCase):
     """O ciclo carimba `lastRefreshAt` só quando houve renovação de verdade."""
 
     def ciclo(self, renewed: bool):
-        import tempfile, os, sqlite3
+        import os
+        import sqlite3
+        import tempfile
         from nine_rtksync.config import Settings
         from nine_rtksync.daemon import SyncEngine
 

@@ -65,7 +65,7 @@ class TestWebAuth(unittest.TestCase):
         bad_token = base64.b64encode(b"admin:wrongpass").decode("utf-8")
         req = urllib.request.Request(url, headers={"Authorization": f"Basic {bad_token}"})
         try:
-            urllib.request.urlopen(url, timeout=3.0)
+            urllib.request.urlopen(req, timeout=3.0)
             self.fail("Expected HTTPError 401")
         except urllib.error.HTTPError as e:
             self.assertEqual(e.code, 401)

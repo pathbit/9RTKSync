@@ -39,7 +39,7 @@ from .i18n import DEFAULT_LANGUAGE, LANGUAGES, normalize_language, translate
 from .identidade import NOME_DO_GATEWAY, NOME_DO_PRODUTO
 from .logs import get_logger
 from .prefs import get_preference, set_preference
-from . import i18n, protecao, sessao, sso
+from . import protecao, sessao, sso
 from .render import render_dashboard, render_login_page, render_notice_page
 from .gateway import CATALOGO_INACESSIVEL, carregar_painel, esquece_o_catalogo, sondar
 from .render import render_landing_page

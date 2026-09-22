@@ -1,9 +1,5 @@
 """Static API key connection handler."""
 
-import json
-import time
-import urllib.request
-from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional, Tuple
 
 from ..credential_check import (

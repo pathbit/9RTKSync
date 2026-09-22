@@ -8,7 +8,6 @@ from .daemon import SyncEngine, run_daemon
 from .identidade import NOME_DO_GATEWAY, NOME_DO_PRODUTO
 from .gateway import get_all_combos, get_all_connections
 from .logs import setup_logging
-from .web import start_web_server
 
 
 def print_status_table(settings: Settings):
