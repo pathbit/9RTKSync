@@ -1,7 +1,6 @@
 """Global settings and environment variable loading for this synchronizer."""
 
 import os
-import sys
 from dataclasses import dataclass
 from typing import List, Optional, Tuple
 

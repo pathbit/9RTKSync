@@ -3,7 +3,6 @@
 import os
 import signal
 import threading
-import sys
 import time
 from datetime import datetime, timezone
 from typing import Any, Dict, List
@@ -15,7 +14,6 @@ from .identidade import NOME_DO_PRODUTO
 from .gateway import get_all_connections, update_connection_data
 from .discovery import HostDiscoveryEngine
 from .logs import get_logger
-from .models import ConnectionRecord
 from .normalizer import normalize_connection_data
 from .providers import ApiKeyProvider, BaseProvider, GenericOAuthProvider, GoogleProvider, LocalProvider
 from .web import start_web_server
