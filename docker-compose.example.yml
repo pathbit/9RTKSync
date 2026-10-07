@@ -160,6 +160,27 @@ services:
     networks:
       - 9rtksync-net
 
+  # --- Otimizacao de tokens (opcional) --------------------------------------
+  #
+  # Comprime payloads de contexto e reduz custos de tokens para agentes de IA (Claude
+  # Code, Cursor, Windsurf) intermediando chamadas antes do gateway:
+  #   docker compose --profile headroom up -d
+  9rtk-headroom:
+    image: ghcr.io/headroomlabs-ai/headroom:latest
+    container_name: 9rtk-headroom
+    hostname: 9rtk-headroom
+    profiles: ["headroom"]
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8787:8787"
+    environment:
+      - UPSTREAM_URL=http://9rtk-router:20128
+      - PORT=8787
+    networks:
+      - 9rtksync-net
+    depends_on:
+      - 9rtk-router
+
 volumes:
   9rtk_tailnet:
   9router_data:
