@@ -1,6 +1,6 @@
 """Tudo o que diferencia este painel dos irmãos, e nada além disso.
 
-Os três sincronizadores -- 9RTKSync, OminiRTkSync e LiteLlmRTKSync -- são a
+Os três sincronizadores -- 9RTKSync, OmniRTkSync e LiteLlmRTKSync -- são a
 mesma aplicação. O que muda entre eles é cor, nome, logo, identidade visual e
 com quem cada um conversa. Este arquivo é a fronteira: depois dele, nenhum outro
 módulo do pacote escreve uma cor em hexadecimal, o nome do produto, o nome do

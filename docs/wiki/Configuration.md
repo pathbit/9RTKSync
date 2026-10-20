@@ -55,7 +55,7 @@ out and produce `BrokenPipeError` in the logs.
 | :--- | :--- | :--- |
 | `ENABLE_WEB_DASHBOARD` | `1` | `0` runs the synchronizer headless, with no HTTP server at all. |
 | `WEB_HOST` | `0.0.0.0` | Listen interface **inside** the container. Keep the published port bound to `127.0.0.1` on the host. |
-| `WEB_PORT` | `9090` | Internal port. Identical in both synchronizers; the published host port is what differs (`9091` here, `9092` for OminiRTKSync). |
+| `WEB_PORT` | `9090` | Internal port. Identical in both synchronizers; the published host port is what differs (`9091` here, `9092` for OmniRTKSync). |
 
 ---
 

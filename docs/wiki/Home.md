@@ -60,12 +60,12 @@ queries the SQLite database.
 ## The sibling project
 
 If you run [OmniRoute](https://github.com/diegosouzapw/OmniRoute) instead of 9Router, use
-[OminiRTKSync](https://github.com/pathbit/OminiRTkSync), which targets that gateway's relational
+[OmniRTKSync](https://github.com/pathbit/OmniRTkSync), which targets that gateway's relational
 schema. The two projects share the same dashboard, logging, authentication and configuration
 contract; only the database layer and the provider set differ.
 
 Both synchronizers listen on **port 9090 inside their container**. The published host ports
-differ so they can run side by side: `9091` for 9RTKSync, `9092` for OminiRTKSync.
+differ so they can run side by side: `9091` for 9RTKSync, `9092` for OmniRTKSync.
 
 ---
 

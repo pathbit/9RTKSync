@@ -49,7 +49,7 @@ services:
       - 9rtksync-net
     restart: unless-stopped
     ports:
-      # Porta interna 9090 (igual no OminiRTKSync); publicada em 9091 no host.
+      # Porta interna 9090 (igual no OmniRTKSync); publicada em 9091 no host.
       # O bind em 127.0.0.1 mantem o painel e o SQLite fora da internet.
       - "127.0.0.1:9091:9090"
     volumes:
