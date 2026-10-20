@@ -53,7 +53,7 @@ services:
       - 9rtksync-net
     restart: unless-stopped
     ports:
-      # Internal port 9090 (same in OminiRTKSync); published on 9091.
+      # Internal port 9090 (same in OmniRTKSync); published on 9091.
       # The 127.0.0.1 bind keeps the panel and the SQLite file off the internet.
       - "127.0.0.1:9091:9090"
     volumes:
@@ -197,7 +197,7 @@ Same for the gateways.
 | OmniRoute | `20128` | `8082` |
 | LiteLLM | `4000` | `8083` |
 | 9RTKSync panel | `9090` | `9091` |
-| OminiRTkSync panel | `9090` | `9092` |
+| OmniRTkSync panel | `9090` | `9092` |
 | LiteLlmRTKSync panel | `9090` | `9093` |
 
 The article stack (`claudegravity`) keeps **`20128`**, 9Router's default port.

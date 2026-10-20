@@ -119,7 +119,7 @@ the only component that can actually apply it to a request.
 
 ## The sibling gateway, for comparison
 
-[OminiRTkSync](https://github.com/pathbit/OminiRTkSync) documents the same idea
+[OmniRTkSync](https://github.com/pathbit/OmniRTkSync) documents the same idea
 for OmniRoute, which stores it differently: a `proxy_registry` of endpoints,
 a `proxy_assignments` table binding them by `scope` (`global`, `provider`,
 `account`) and a `proxy_scope_rotation` row per scope. There, a single proxy at
@@ -248,7 +248,7 @@ requisição.
 
 ## O gateway irmão, para comparação
 
-O [OminiRTkSync](https://github.com/pathbit/OminiRTkSync) documenta a mesma
+O [OmniRTkSync](https://github.com/pathbit/OmniRTkSync) documenta a mesma
 ideia para o OmniRoute, que a guarda de outro jeito: um `proxy_registry` de
 endereços, uma tabela `proxy_assignments` que os vincula por `scope` (`global`,
 `provider`, `account`) e uma linha de `proxy_scope_rotation` por escopo. Lá, um

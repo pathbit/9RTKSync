@@ -427,7 +427,7 @@ formula, but only one of them is solved by money.
 | How it grows | buy an account, with a new holder | move up a tier, redistribute budget |
 | Saturation signal | `rateLimitedUntil`, `modelLock_*` in SQLite | 429 plus the proxy's own spend log |
 
-The sibling [OminiRTkSync](https://github.com/pathbit/OminiRTkSync) sizes exactly
+The sibling [OmniRTkSync](https://github.com/pathbit/OmniRTkSync) sizes exactly
 like this column — same shape, same `[A MEDIR]`, different storage format for
 the expiry. The LiteLLM-facing sibling is the one where the question changes
 shape entirely: there the ceiling is declared at **three** levels and the rule is
@@ -754,7 +754,7 @@ chega a existir daquele lado: o que a API publica é teto **por minuto**
 (RPM / ITPM / OTPM por tier), não capacidade de janela
 `[FONTE: https://platform.claude.com/docs/en/api/rate-limits — lido em 12/09/2026]`.
 Não carregue número de uma coluna para a outra. O irmão
-[OminiRTkSync](https://github.com/pathbit/OminiRTkSync) dimensiona igual a esta
+[OmniRTkSync](https://github.com/pathbit/OmniRTkSync) dimensiona igual a esta
 coluna: mesma forma, mesmo `[A MEDIR]`, formato de expiração diferente.
 
 ## Uma restrição que não é de capacidade
