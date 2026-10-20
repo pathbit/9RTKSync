@@ -74,7 +74,7 @@ both call sites through it.
 
 ## What we fixed on our side
 
-[OminiRTKSync](https://github.com/pathbit/OminiRTkSync) was itself writing `expires_at` as a
+[OmniRTKSync](https://github.com/pathbit/OmniRTkSync) was itself writing `expires_at` as a
 numeric epoch in text (`str(expires_at_ms)`) and `test_status = 'ok'` — a value OmniRoute does not
 recognise as healthy. Both are fixed; it now writes ISO-8601 and `'active'`, the gateway's native
 formats.

@@ -131,7 +131,7 @@ while `LOG_TO_STDOUT=1`.
 ## Both synchronizers fight over the same port
 
 They listen on **9090 inside their own container** by design. Only the published host port
-differs: `9091` for 9RTKSync, `9092` for OminiRTKSync. If you changed `WEB_PORT`, change it in
+differs: `9091` for 9RTKSync, `9092` for OmniRTKSync. If you changed `WEB_PORT`, change it in
 one container only — there is no reason for the internal ports to differ.
 
 ---
