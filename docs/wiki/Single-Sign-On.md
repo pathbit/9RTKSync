@@ -6,7 +6,7 @@ The panel has always had two doors, and single sign-on adds a third way of
 *creating a session* — not a third kind of session. The cookie handed out at the
 end of the federated flow is byte for byte the one the local form hands out
 today, signed by the same per-process secret in
-[`src/nine_rtksync/sessao.py`](https://github.com/pathbit/9RTKSync/blob/master/src/nine_rtksync/sessao.py).
+[`src/nine_rtksync/sessao.py`](https://github.com/pathbit/9RTKSync/blob/main/src/nine_rtksync/sessao.py).
 
 > **It is optional, and it starts off.** With nothing configured the panel
 > behaves exactly as it does today: the sign-in screen is the same, and the
@@ -173,7 +173,7 @@ docker build --build-arg ENABLE_SAML=1 -t 9rtksync:saml .
 
 Set `image: 9rtksync:saml` for the sync service in Compose. The standard image offers OIDC.
 
-The [Docker Keycloak example](https://github.com/pathbit/9RTKSync/tree/master/examples/saml-keycloak) registers all three test panels. In that example, the realm descriptor is at `http://localhost:19557/realms/rtksync-lab/protocol/saml/descriptor`.
+The [Docker Keycloak example](https://github.com/pathbit/9RTKSync/tree/main/examples/saml-keycloak) registers all three test panels. In that example, the realm descriptor is at `http://localhost:19557/realms/rtksync-lab/protocol/saml/descriptor`.
 
 In Keycloak, create a SAML client with the panel entity ID at `/sso/saml/metadata` and the POST endpoint at `/sso/saml/acs`. Enable signatures for both the response and assertion, use an email-format NameID and leave the assertion unencrypted. Disable **Client signature required** for this client. The panel sends its AuthnRequest over HTTP-Redirect. Copy the IdP entity ID, HTTP-Redirect SSO URL and signing certificate from the realm descriptor. Enter them in the panel along with its base URL and the email or domain allowlist. Authenticated operators can download the SP metadata.
 
@@ -333,6 +333,6 @@ docker build --build-arg ENABLE_SAML=1 -t 9rtksync:saml .
 
 No serviço do sincronizador do Compose, use `image: 9rtksync:saml`. A imagem padrão mantém apenas a opção OIDC.
 
-O [exemplo Keycloak em Docker](https://github.com/pathbit/9RTKSync/tree/master/examples/saml-keycloak) registra os três painéis de teste. Nesse exemplo, o descritor do realm está em `http://localhost:19557/realms/rtksync-lab/protocol/saml/descriptor`.
+O [exemplo Keycloak em Docker](https://github.com/pathbit/9RTKSync/tree/main/examples/saml-keycloak) registra os três painéis de teste. Nesse exemplo, o descritor do realm está em `http://localhost:19557/realms/rtksync-lab/protocol/saml/descriptor`.
 
 No Keycloak, crie um cliente SAML com o Entity ID do painel em `/sso/saml/metadata` e a URL de POST em `/sso/saml/acs`. Habilite a assinatura da resposta e da asserção, selecione NameID no formato e-mail e deixe a asserção sem criptografia. Desative **Client signature required** nesse cliente. O painel envia a AuthnRequest por HTTP-Redirect. Copie do descritor público do realm o Entity ID, a URL de SSO HTTP-Redirect e o certificado de assinatura. No painel, preencha esses campos, a URL base e a lista de e-mails ou domínios permitidos. O painel disponibiliza os metadados do SP a operadores autenticados.

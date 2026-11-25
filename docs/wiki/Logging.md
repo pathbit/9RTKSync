@@ -4,7 +4,7 @@ Container stdout is volatile: it disappears on `docker rm`, gets truncated by th
 does not survive a restart. Events that matter for auditing — token renewals, sync failures,
 dashboard access — are therefore also written to a file, with daily rotation and age-based purge.
 
-Implemented in [`src/nine_rtksync/logs.py`](https://github.com/pathbit/9RTKSync/blob/master/src/nine_rtksync/logs.py),
+Implemented in [`src/nine_rtksync/logs.py`](https://github.com/pathbit/9RTKSync/blob/main/src/nine_rtksync/logs.py),
 covered by `tests/test_logs.py`.
 
 ---

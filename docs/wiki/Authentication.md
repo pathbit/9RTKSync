@@ -1,7 +1,7 @@
 # Authentication
 
 The dashboard is protected by HTTP Basic Auth. Three credential sources are evaluated in a fixed
-order, implemented in [`src/nine_rtksync/auth.py`](https://github.com/pathbit/9RTKSync/blob/master/src/nine_rtksync/auth.py)
+order, implemented in [`src/nine_rtksync/auth.py`](https://github.com/pathbit/9RTKSync/blob/main/src/nine_rtksync/auth.py)
 and covered by `tests/test_auth_recovery.py`.
 
 ---
