@@ -434,7 +434,7 @@ shape entirely: there the ceiling is declared at **three** levels and the rule i
 `key ≤ team ≤ platform default`, checkable field by field — which is exactly the
 sibling's subject, because LiteLLM accepts a key that declares more than its
 team and then silently enforces the smaller number
-`[FONTE: https://github.com/pathbit/LiteLlmRTKSync/blob/master/docs/wiki/Rate-Limit-Coherence.md — lido em 2026-09-13]`. Do not carry a
+`[FONTE: https://github.com/pathbit/LiteLlmRTKSync/blob/main/docs/wiki/Rate-Limit-Coherence.md — lido em 2026-09-13]`. Do not carry a
 number from one column to the other.
 
 ---
@@ -749,7 +749,7 @@ o teto é declarado em **três** níveis, com a regra `chave ≤ time ≤ padrã
 plataforma`, conferível campo a campo — que é exatamente o assunto do irmão,
 porque o LiteLLM aceita uma chave declarando mais que o time dela e depois impõe
 o número menor em silêncio
-`[FONTE: https://github.com/pathbit/LiteLlmRTKSync/blob/master/docs/wiki/Rate-Limit-Coherence.md — lido em 2026-09-13]`. E `C_window` nem
+`[FONTE: https://github.com/pathbit/LiteLlmRTKSync/blob/main/docs/wiki/Rate-Limit-Coherence.md — lido em 2026-09-13]`. E `C_window` nem
 chega a existir daquele lado: o que a API publica é teto **por minuto**
 (RPM / ITPM / OTPM por tier), não capacidade de janela
 `[FONTE: https://platform.claude.com/docs/en/api/rate-limits — lido em 12/09/2026]`.

@@ -18,4 +18,4 @@
 
 ---
 
-Edited in [`docs/wiki/`](https://github.com/pathbit/9RTKSync/tree/master/docs/wiki)
+Edited in [`docs/wiki/`](https://github.com/pathbit/9RTKSync/tree/main/docs/wiki)
