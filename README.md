@@ -11,12 +11,11 @@
 
 ## Documentation
 
-The full documentation lives in the [project wiki](../../wiki): installation, the complete
+The [project documentation](docs/wiki/) covers installation, the complete
 environment-variable contract, the dashboard, authentication and break-glass recovery,
 persistent logging, architecture, troubleshooting, and the upstream gateway fixes.
 
-Wiki pages are generated from [`docs/wiki/`](docs/wiki) — edit them there and open a pull
-request; a push to `master` republishes the wiki automatically.
+Edit the files in `docs/wiki/` and open a pull request to update the documentation.
 
 ---
 
