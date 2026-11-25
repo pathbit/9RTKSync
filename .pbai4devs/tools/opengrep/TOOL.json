@@ -1,0 +1,71 @@
+{
+  "name": "opengrep",
+  "description": "Analisa codigo com regras SAST locais.",
+  "group": "security",
+  "source": "https://github.com/opengrep/opengrep/releases/tag/v1.33.1",
+  "license": "LGPL-2.1",
+  "licenseSource": "https://github.com/opengrep/opengrep/blob/v1.33.1/LICENSE",
+  "download": {
+    "provider": "github-release",
+    "repository": "opengrep/opengrep",
+    "channel": "reviewed",
+    "version": "1.33.1",
+    "tag": "v1.33.1",
+    "assets": {
+      "darwin-arm64": {
+        "file": "opengrep_osx_arm64",
+        "format": "raw",
+        "binary": "opengrep_osx_arm64",
+        "sha256": "a17c1881bb40e3214266a7a291cf4f2ae3bc56c1715628b5712d2ec816bc3e2d"
+      },
+      "darwin-x64": {
+        "file": "opengrep_osx_x86",
+        "format": "raw",
+        "binary": "opengrep_osx_x86",
+        "sha256": "c3bd18e0d898d44e28419d95dad57c8928bb46ab32889a0ee1f72a87ad9627af"
+      },
+      "linux-arm64": {
+        "file": "opengrep_manylinux_aarch64",
+        "format": "raw",
+        "binary": "opengrep_manylinux_aarch64",
+        "sha256": "d1433f63a90b8bc0b6ad4b498a13b372b856ce9a754a43484ba4920fe2d76dcf"
+      },
+      "linux-x64": {
+        "file": "opengrep_manylinux_x86",
+        "format": "raw",
+        "binary": "opengrep_manylinux_x86",
+        "sha256": "46e8133cc490f9f50518061590ce2f6be5a08afaeda034471c0ceda4b3899808"
+      },
+      "win32-x64": {
+        "file": "opengrep_windows_x86.exe",
+        "format": "raw",
+        "binary": "opengrep_windows_x86.exe",
+        "sha256": "132e606e071bdd3928286fddc893198a6106a90820d46e21197e0ace1a23e0c1"
+      }
+    }
+  },
+  "platforms": [
+    "darwin-arm64",
+    "darwin-x64",
+    "linux-arm64",
+    "linux-x64",
+    "win32-x64"
+  ],
+  "scripts": {
+    "entry": "SCRIPT.mjs"
+  },
+  "probe": [
+    "--disable-version-check",
+    "--version"
+  ],
+  "env": {
+    "SEMGREP_ENABLE_VERSION_CHECK": "0",
+    "SEMGREP_SEND_METRICS": "off",
+    "SEMGREP_RULES": "",
+    "OPENGREP_ENABLE_VERSION_CHECK": "0"
+  },
+  "envPaths": {
+    "XDG_CONFIG_HOME": "config",
+    "XDG_CACHE_HOME": "cache"
+  }
+}

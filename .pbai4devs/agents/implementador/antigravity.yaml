@@ -1,0 +1,8 @@
+---
+name: implementador
+description: Implementa o escopo aprovado e entrega código, testes e evidências.
+tools: [view_file, grep_search, run_command, replace_file_content]
+mainAgent: false
+subagent: true
+commandExecutionPolicy: "sandbox"
+---

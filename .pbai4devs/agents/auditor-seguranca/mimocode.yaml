@@ -1,0 +1,8 @@
+---
+description: Revisa riscos, interpreta scanners locais e valida controles de segurança.
+mode: subagent
+permission:
+  edit: deny
+  bash: ask
+  webfetch: deny
+---

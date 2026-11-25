@@ -1,0 +1,11 @@
+---
+description: Implementa e verifica a interface aprovada e seus fluxos reais.
+mode: subagent
+permissions:
+  - action: edit
+    resource: "*"
+    effect: ask
+  - action: shell
+    resource: "*"
+    effect: ask
+---

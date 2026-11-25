@@ -1,0 +1,8 @@
+---
+description: Implementa e verifica a interface aprovada e seus fluxos reais.
+mode: subagent
+permission:
+  edit: ask
+  bash: ask
+  webfetch: deny
+---

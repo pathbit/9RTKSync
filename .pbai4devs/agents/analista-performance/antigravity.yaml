@@ -1,0 +1,8 @@
+---
+name: analista-performance
+description: Mede desempenho e investiga regressões com cargas e evidências comparáveis.
+tools: [view_file, grep_search, run_command]
+mainAgent: false
+subagent: true
+commandExecutionPolicy: "sandbox"
+---

@@ -1,0 +1,159 @@
+{
+  "schemaVersion": 1,
+  "allowlist": [
+    "vercel-labs/skills",
+    "vercel-labs/agent-skills",
+    "cloudflare/skills",
+    "microsoft/skills",
+    "oracle/skills",
+    "anthropics/skills",
+    "openai/skills",
+    "tech-leads-club/agent-skills",
+    "github/awesome-copilot",
+    "trailofbits/skills"
+  ],
+  "skills": [
+    {
+      "id": "vercel-writing-guidelines",
+      "repository": "vercel-labs/agent-skills",
+      "commit": "1a2c79d4e6c4a2283dc2c614b6538cbe1ed5ca62",
+      "path": "skills/writing-guidelines/SKILL.md",
+      "name": "writing-guidelines",
+      "license": "MIT",
+      "use": "Revisar textos e documentação quando a tarefa pedir orientação editorial.",
+      "status": "reviewed",
+      "notes": "Licença declarada no README da origem. O pin não congela regras buscadas em main. Aplicar somente princípios editoriais compatíveis; Markdown, Node, autoria Git e demais regras locais prevalecem sobre recomendações de MDX/TypeScript ou atribuição de agentes.",
+      "licenseSource": "https://github.com/vercel-labs/agent-skills/blob/1a2c79d4e6c4a2283dc2c614b6538cbe1ed5ca62/README.md#license"
+    },
+    {
+      "id": "cloudflare-web-perf",
+      "repository": "cloudflare/skills",
+      "commit": "cbf893b954222276bf1af57e5f23379231e0efb9",
+      "path": "skills/web-perf/SKILL.md",
+      "name": "web-perf",
+      "license": "Apache-2.0",
+      "use": "Investigar desempenho web com medições reais quando houver página e ferramenta disponíveis.",
+      "status": "reviewed",
+      "notes": "Depende das ferramentas de navegador necessárias à investigação. Salvar evidências em .agent-tests e informar medições não executadas.",
+      "licenseSource": "https://github.com/cloudflare/skills/blob/cbf893b954222276bf1af57e5f23379231e0efb9/LICENSE"
+    },
+    {
+      "id": "anthropic-frontend-design",
+      "repository": "anthropics/skills",
+      "commit": "2c5958ecac7cee2b583967a2c4981d0f4a75c579",
+      "path": "skills/frontend-design/SKILL.md",
+      "name": "frontend-design",
+      "license": "Apache-2.0",
+      "use": "Apoiar implementação visual após decisões de produto e design.",
+      "status": "reviewed",
+      "notes": "LICENSE.txt presente na pasta. Aplicar às interfaces solicitadas, respeitando o design aprovado e a stack do projeto.",
+      "licenseSource": "https://github.com/anthropics/skills/blob/2c5958ecac7cee2b583967a2c4981d0f4a75c579/skills/frontend-design/LICENSE.txt"
+    },
+    {
+      "id": "openai-security-best-practices",
+      "repository": "openai/skills",
+      "commit": "49f948faa9258a0c61caceaf225e179651397431",
+      "path": "skills/.curated/security-best-practices/SKILL.md",
+      "name": "security-best-practices",
+      "license": "Apache-2.0",
+      "use": "Revisar práticas de segurança quando solicitado explicitamente.",
+      "status": "reviewed",
+      "notes": "LICENSE.txt e referências devem ser preservados. Suporte orientado a Python, JavaScript/TypeScript e Go; sem auditoria automática fora do escopo.",
+      "licenseSource": "https://github.com/openai/skills/blob/49f948faa9258a0c61caceaf225e179651397431/skills/.curated/security-best-practices/LICENSE.txt"
+    },
+    {
+      "id": "microsoft-frontend-review",
+      "repository": "microsoft/skills",
+      "commit": "4cfa010138972d45a7bb92edea90094f4f443da8",
+      "path": ".github/skills/frontend-design-review/SKILL.md",
+      "name": "frontend-design-review",
+      "license": "MIT",
+      "use": "Revisar uma interface existente quando essa revisão fizer parte da tarefa.",
+      "status": "reviewed",
+      "notes": "Licença MIT na raiz da origem. Respeitar a revisão pedida e complementar recomendações com validação real no navegador.",
+      "licenseSource": "https://github.com/microsoft/skills/blob/4cfa010138972d45a7bb92edea90094f4f443da8/LICENSE"
+    },
+    {
+      "id": "vercel-react-best-practices",
+      "repository": "vercel-labs/agent-skills",
+      "commit": "1a2c79d4e6c4a2283dc2c614b6538cbe1ed5ca62",
+      "path": "skills/react-best-practices/SKILL.md",
+      "name": "vercel-react-best-practices",
+      "license": "MIT",
+      "use": "Revisar React/Next.js quando essa stack tiver sido aprovada.",
+      "status": "candidate",
+      "notes": "Adoção depende da stack e da revisão da pasta. Não define a tecnologia do produto.",
+      "licenseSource": "https://github.com/vercel-labs/agent-skills/blob/1a2c79d4e6c4a2283dc2c614b6538cbe1ed5ca62/README.md#license"
+    },
+    {
+      "id": "cloudflare-workers-best-practices",
+      "repository": "cloudflare/skills",
+      "commit": "cbf893b954222276bf1af57e5f23379231e0efb9",
+      "path": "skills/workers-best-practices/SKILL.md",
+      "name": "workers-best-practices",
+      "license": "Apache-2.0",
+      "use": "Revisar Workers quando a arquitetura utilizar Cloudflare.",
+      "status": "candidate",
+      "notes": "Consultar versão e documentação atual; não criar infraestrutura nem fazer deploy por iniciativa própria.",
+      "licenseSource": "https://github.com/cloudflare/skills/blob/cbf893b954222276bf1af57e5f23379231e0efb9/LICENSE"
+    },
+    {
+      "id": "oracle-database",
+      "repository": "oracle/skills",
+      "commit": "0779f030fdee393ee418a3a76f6a4b09bf1408db",
+      "path": "db/SKILL.md",
+      "name": "db",
+      "license": "UPL-1.0",
+      "use": "Trabalhar com Oracle Database se escolhido no design.",
+      "status": "candidate",
+      "notes": "Pode chamar SQLcl/MCP e operações de banco. Exige revisão do escopo, licença e ferramentas; não faz parte da configuração base."
+    },
+    {
+      "id": "community-spec-driven-eval",
+      "repository": "tech-leads-club/agent-skills",
+      "commit": "e74dc8a7e8d59bb36f267afd089580e0858e224a",
+      "path": "packages/skills-catalog/skills/(development)/spec-driven-eval/SKILL.md",
+      "name": "spec-driven-eval",
+      "license": "CC-BY-4.0",
+      "use": "Avaliar implementação contra critérios de aceite.",
+      "status": "candidate",
+      "notes": "Fonte comunitária com atribuição. Revisar licença e adaptar destino de relatórios para .agent-tests; a origem grava junto da spec."
+    },
+    {
+      "id": "openai-security-threat-model",
+      "repository": "openai/skills",
+      "commit": "49f948faa9258a0c61caceaf225e179651397431",
+      "path": "skills/.curated/security-threat-model/SKILL.md",
+      "name": "security-threat-model",
+      "license": "Apache-2.0",
+      "use": "Modelar ameacas e fronteiras de confianca com evidencias locais do projeto.",
+      "status": "reviewed",
+      "notes": "Procedimento textual, sem conta ou scanner remoto obrigatorio. Carregar referencias da pasta conforme necessario; resultados e hipoteses ficam em .agent-tests. As perguntas de contexto continuam necessarias quando a arquitetura nao responder.",
+      "licenseSource": "https://github.com/openai/skills/blob/49f948faa9258a0c61caceaf225e179651397431/skills/.curated/security-threat-model/LICENSE.txt"
+    },
+    {
+      "id": "github-security-review",
+      "repository": "github/awesome-copilot",
+      "commit": "30a0d7465b14b05e05949d6588b99f7af0c537b4",
+      "path": "skills/security-review/SKILL.md",
+      "name": "security-review",
+      "license": "MIT",
+      "use": "Revisar fluxos de dados e controles entre arquivos, com triagem dos achados locais.",
+      "status": "reviewed",
+      "notes": "Aplicar raciocinio de revisao, sem SaaS. Watchlists estaticas de CVEs nao substituem bases locais atualizadas. Nao copiar segredos/snippets sensiveis nos relatorios; preservar o escopo, as aprovacoes existentes e a politica do projeto.",
+      "licenseSource": "https://github.com/github/awesome-copilot/blob/30a0d7465b14b05e05949d6588b99f7af0c537b4/LICENSE"
+    },
+    {
+      "id": "trailofbits-differential-review",
+      "repository": "trailofbits/skills",
+      "commit": "e4dd0bb5b15535f7c5a0834187dffba6ac37e4ff",
+      "path": "plugins/differential-review/skills/differential-review/SKILL.md",
+      "name": "differential-review",
+      "license": "CC-BY-SA-4.0",
+      "use": "Referencia de revisao de mudancas com contexto e cobertura de testes.",
+      "status": "candidate",
+      "notes": "Preservar atribuicao e share-alike; nao copiar para fontes MIT. Revisar dependencias e recursos auxiliares antes da instalacao. Nao adotar scripts que exijam Python, conta ou servico remoto no fluxo local.",
+      "licenseSource": "https://github.com/trailofbits/skills/blob/e4dd0bb5b15535f7c5a0834187dffba6ac37e4ff/LICENSE"
+    }
+  ]
+}

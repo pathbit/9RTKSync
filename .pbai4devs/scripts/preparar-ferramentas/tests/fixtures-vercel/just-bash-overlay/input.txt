@@ -1,0 +1,1 @@
+Fixture para escrita somente em memória.

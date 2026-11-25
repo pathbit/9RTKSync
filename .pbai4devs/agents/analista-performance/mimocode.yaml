@@ -1,0 +1,8 @@
+---
+description: Mede desempenho e investiga regressões com cargas e evidências comparáveis.
+mode: subagent
+permission:
+  edit: deny
+  bash: ask
+  webfetch: deny
+---

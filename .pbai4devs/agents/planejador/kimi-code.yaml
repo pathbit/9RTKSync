@@ -1,0 +1,5 @@
+---
+name: planejador
+description: Esclarece o pedido e entrega um plano verificável sem implementar.
+tools: [Read, Grep, Glob]
+---

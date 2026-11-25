@@ -1,0 +1,11 @@
+---
+description: Esclarece o pedido e entrega um plano verificável sem implementar.
+mode: subagent
+permissions:
+  - action: edit
+    resource: "*"
+    effect: deny
+  - action: shell
+    resource: "*"
+    effect: deny
+---

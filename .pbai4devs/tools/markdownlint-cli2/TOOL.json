@@ -1,0 +1,28 @@
+{
+  "name": "markdownlint-cli2",
+  "description": "Lint de arquivos Markdown do projeto.",
+  "group": "base",
+  "source": "https://github.com/DavidAnson/markdownlint-cli2",
+  "download": {
+    "provider": "npm",
+    "package": "markdownlint-cli2",
+    "registry": "https://registry.npmjs.org/",
+    "repository": "DavidAnson/markdownlint-cli2",
+    "channel": "latest"
+  },
+  "platforms": [
+    "darwin-arm64",
+    "darwin-x64",
+    "linux-arm64",
+    "linux-x64",
+    "win32-arm64",
+    "win32-x64"
+  ],
+  "scripts": {
+    "entry": "SCRIPT.mjs"
+  },
+  "probe": [
+    "-"
+  ],
+  "probeInput": "---\ndescription: Local tool probe.\n---\n\n# Probe\n"
+}

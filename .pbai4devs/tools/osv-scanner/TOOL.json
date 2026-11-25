@@ -1,0 +1,70 @@
+{
+  "name": "osv-scanner",
+  "description": "Analisa dependencias com bases locais de vulnerabilidades.",
+  "group": "security",
+  "source": "https://github.com/google/osv-scanner/releases/tag/v2.7.1",
+  "license": "Apache-2.0",
+  "licenseSource": "https://github.com/google/osv-scanner/blob/v2.7.1/LICENSE",
+  "download": {
+    "provider": "github-release",
+    "repository": "google/osv-scanner",
+    "channel": "reviewed",
+    "version": "2.7.1",
+    "tag": "v2.7.1",
+    "assets": {
+      "darwin-arm64": {
+        "file": "osv-scanner_darwin_arm64",
+        "format": "raw",
+        "binary": "osv-scanner_darwin_arm64",
+        "sha256": "b22c02877a811c8f78956e8643efa554932b7378f590d13f8e97d4e9448a29f3"
+      },
+      "darwin-x64": {
+        "file": "osv-scanner_darwin_amd64",
+        "format": "raw",
+        "binary": "osv-scanner_darwin_amd64",
+        "sha256": "b8420d5485ba792626315f1bf9a5a2046e971d38eea75bf9090c38852dbc3b1b"
+      },
+      "linux-arm64": {
+        "file": "osv-scanner_linux_arm64",
+        "format": "raw",
+        "binary": "osv-scanner_linux_arm64",
+        "sha256": "983d22fbad9724514e3fcc6acc83b5fa64c5ffa6b0d9f510028f22c1b223ff81"
+      },
+      "linux-x64": {
+        "file": "osv-scanner_linux_amd64",
+        "format": "raw",
+        "binary": "osv-scanner_linux_amd64",
+        "sha256": "fb7dab19a8bd9bbe5c3189f09d4b7ee1820c9553a23bac202648a56efd2f6ee8"
+      },
+      "win32-arm64": {
+        "file": "osv-scanner_windows_arm64.exe",
+        "format": "raw",
+        "binary": "osv-scanner_windows_arm64.exe",
+        "sha256": "5f3998b55c9268f8468502bbcb60645038fd5b145ee5e685e6ae2a32e923afc7"
+      },
+      "win32-x64": {
+        "file": "osv-scanner_windows_amd64.exe",
+        "format": "raw",
+        "binary": "osv-scanner_windows_amd64.exe",
+        "sha256": "7121dcf420aefbbf89a7f0050c4d3094e079ff93afd334dfc96f16b02ec85800"
+      }
+    }
+  },
+  "platforms": [
+    "darwin-arm64",
+    "darwin-x64",
+    "linux-arm64",
+    "linux-x64",
+    "win32-arm64",
+    "win32-x64"
+  ],
+  "scripts": {
+    "entry": "SCRIPT.mjs"
+  },
+  "probe": [
+    "--version"
+  ],
+  "envPaths": {
+    "OSV_SCANNER_LOCAL_DB_CACHE_DIRECTORY": "data/osv"
+  }
+}

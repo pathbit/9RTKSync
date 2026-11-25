@@ -1,0 +1,8 @@
+import assert from 'node:assert/strict';
+import test from 'node:test';
+import { add } from '../src/index.mjs';
+
+test('AC-003: workspace calculation works independently', () => {
+  assert.equal(add(2, 3), 5);
+  assert.equal(add(-4, 4), 0);
+});

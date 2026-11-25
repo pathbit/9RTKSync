@@ -1,0 +1,16 @@
+# MODELO: configure imagem, comandos e servicos antes de usar.
+name: ${COMPOSE_PROJECT_NAME:?Defina COMPOSE_PROJECT_NAME}
+services:
+  app:
+    image: ${APP_IMAGE:?Defina APP_IMAGE com uma versao}
+    init: true
+    ports:
+      - "127.0.0.1:${APP_PORT:?Defina uma porta livre}:${APP_CONTAINER_PORT:?Defina a porta do container}"
+    healthcheck:
+      # Em imagens sem shell, substitua por ["CMD", "programa", "argumento"].
+      test: ["CMD-SHELL", "${APP_HEALTHCHECK:?Defina uma verificacao real de saude}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+# Acrescente build/Dockerfile, volumes e banco/cache/filas conforme o projeto.
+# Traefik e opcional: configure hosts distintos e remova publicacoes redundantes.

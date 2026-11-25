@@ -1,0 +1,33 @@
+{
+  "name": "skills",
+  "description": "Descoberta de skills por meio do CLI oficial.",
+  "group": "discovery",
+  "source": "https://github.com/vercel-labs/skills",
+  "download": {
+    "provider": "npm",
+    "package": "skills",
+    "registry": "https://registry.npmjs.org/",
+    "repository": "vercel-labs/skills",
+    "channel": "latest"
+  },
+  "platforms": [
+    "darwin-arm64",
+    "darwin-x64",
+    "linux-arm64",
+    "linux-x64",
+    "win32-arm64",
+    "win32-x64"
+  ],
+  "scripts": {
+    "entry": "SCRIPT.mjs"
+  },
+  "envPaths": {
+    "XDG_STATE_HOME": "state"
+  },
+  "env": {
+    "DISABLE_TELEMETRY": "1"
+  },
+  "probe": [
+    "--version"
+  ]
+}

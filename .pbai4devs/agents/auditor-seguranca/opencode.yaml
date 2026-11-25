@@ -1,0 +1,11 @@
+---
+description: Revisa riscos, interpreta scanners locais e valida controles de segurança.
+mode: subagent
+permissions:
+  - action: edit
+    resource: "*"
+    effect: deny
+  - action: shell
+    resource: "*"
+    effect: ask
+---

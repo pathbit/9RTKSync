@@ -1,0 +1,20 @@
+<!doctype html>
+<html lang="pt-BR">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Prova da ferramenta local</title>
+<main>
+  <h1>Prova da ferramenta local</h1>
+  <form>
+    <label>Nome<input name="nome" required></label>
+    <button type="submit">Confirmar</button>
+  </form>
+  <p role="status"></p>
+</main>
+<script>
+document.querySelector('form').onsubmit = event => {
+  event.preventDefault();
+  document.querySelector('[role="status"]').textContent = `Ola, ${event.target.nome.value}`;
+};
+</script>
+</html>

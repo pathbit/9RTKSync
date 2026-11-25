@@ -1,0 +1,20 @@
+{
+  ".agents": { "allow": ["skills.json", "rules.json", "agents.json"] },
+  ".agent": { "allow": [] },
+  ".claude": { "allow": ["settings.json", "CLAUDE.md"] },
+  ".codex": { "allow": ["config.toml", "requirements.toml"] },
+  ".cursor": { "allow": ["mcp.json"] },
+  ".opencode": { "allow": ["opencode.json", "opencode.jsonc"] },
+  ".github": {
+    "allow": [
+      "copilot-instructions.md", "copilot/settings.json", "allowed_models.txt",
+      "instructions/", "prompts/", "workflows/",
+      "actions/", "CODEOWNERS", "dependabot.yml", "ISSUE_TEMPLATE/",
+      "PULL_REQUEST_TEMPLATE/", "PULL_REQUEST_TEMPLATE.md", "FUNDING.yml"
+    ]
+  },
+  ".vscode": {
+    "resources": false,
+    "allow": ["settings.json", "extensions.json", "tasks.json", "launch.json"]
+  }
+}

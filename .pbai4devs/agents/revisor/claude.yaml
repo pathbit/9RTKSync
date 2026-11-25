@@ -1,0 +1,5 @@
+---
+name: revisor
+description: Revisa alterações e critérios de aceite em modo de leitura.
+tools: Read, Grep, Glob
+---

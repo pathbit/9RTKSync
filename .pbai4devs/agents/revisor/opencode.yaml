@@ -1,0 +1,14 @@
+---
+description: Revisa alterações e critérios de aceite em modo de leitura.
+mode: subagent
+permissions:
+  - action: edit
+    resource: "*"
+    effect: deny
+  - action: shell
+    resource: "*"
+    effect: deny
+  - action: subagent
+    resource: "*"
+    effect: deny
+---

@@ -1,0 +1,10 @@
+{
+  "$schema": "https://webreel.dev/schema/v1.json",
+  "videos": {
+    "agentdevkit-smoke": {
+      "url": "./index.html",
+      "viewport": { "width": 640, "height": 480 },
+      "steps": [{ "action": "pause", "ms": 10 }]
+    }
+  }
+}

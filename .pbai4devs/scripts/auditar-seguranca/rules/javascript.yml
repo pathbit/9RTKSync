@@ -1,0 +1,50 @@
+rules:
+  - id: pbai-eval-input
+    languages: [javascript, typescript]
+    severity: ERROR
+    message: Entrada HTTP chega a execucao dinamica de codigo.
+    mode: taint
+    pattern-sources:
+      - pattern-either:
+          - pattern: $REQ.query.$FIELD
+          - pattern: $REQ.body.$FIELD
+          - pattern: $REQ.params.$FIELD
+    pattern-sinks:
+      - pattern-either:
+          - pattern: eval($INPUT)
+          - pattern: new Function(..., $INPUT)
+  - id: pbai-shell-input
+    languages: [javascript, typescript]
+    severity: ERROR
+    message: Entrada HTTP chega a um comando interpretado pelo shell.
+    mode: taint
+    pattern-sources:
+      - pattern-either:
+          - pattern: $REQ.query.$FIELD
+          - pattern: $REQ.body.$FIELD
+          - pattern: $REQ.params.$FIELD
+    pattern-sinks:
+      - pattern-either:
+          - pattern: exec($INPUT, ...)
+          - pattern: $CP.exec($INPUT, ...)
+          - pattern: execSync($INPUT, ...)
+          - pattern: $CP.execSync($INPUT, ...)
+  - id: pbai-sql-input
+    languages: [javascript, typescript]
+    severity: ERROR
+    message: Entrada HTTP e concatenada numa consulta SQL.
+    mode: taint
+    pattern-sources:
+      - pattern-either:
+          - pattern: $REQ.query.$FIELD
+          - pattern: $REQ.body.$FIELD
+          - pattern: $REQ.params.$FIELD
+    pattern-sinks:
+      - patterns:
+          - pattern: $DB.query($QUERY, ...)
+          - focus-metavariable: $QUERY
+  - id: pbai-tls-verification-disabled
+    languages: [javascript, typescript]
+    severity: WARNING
+    message: Verificacao do certificado TLS desativada.
+    pattern: "{..., rejectUnauthorized: false, ...}"

@@ -92,7 +92,11 @@ RUIDO = re.compile(
 
 # Diretórios que a varredura de emergência ignora. O `.git` e os upstreams
 # clonados nunca são fonte; `assets` guarda binário.
-PASTAS_IGNORADAS = {".git", "tmp", "node_modules", "__pycache__", ".venv", "assets"}
+# Agent resources describe development tooling outside the application contract.
+PASTAS_IGNORADAS = {
+    ".git", "tmp", "node_modules", "__pycache__", ".venv", "assets",
+    ".pbai4devs", ".agents", ".codex", ".agent-tests",
+}
 
 
 # Módulo Python citado na documentação: `render.py`, `client.py`. A crase é

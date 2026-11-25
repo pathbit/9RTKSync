@@ -1,0 +1,5 @@
+---
+name: analista-performance
+description: Mede desempenho e investiga regressões com cargas e evidências comparáveis.
+tools: [Read, Grep, Glob, Bash]
+---

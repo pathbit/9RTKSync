@@ -1,0 +1,5 @@
+---
+name: especialista-backend
+description: Implementa e verifica o escopo backend aprovado e seus contratos.
+tools: [Read, Grep, Glob, Bash, Edit, Write]
+---

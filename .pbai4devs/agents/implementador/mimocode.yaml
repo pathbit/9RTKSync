@@ -1,0 +1,8 @@
+---
+description: Implementa o escopo aprovado e entrega código, testes e evidências.
+mode: subagent
+permission:
+  edit: ask
+  bash: ask
+  webfetch: deny
+---

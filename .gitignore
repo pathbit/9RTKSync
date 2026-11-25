@@ -1240,3 +1240,10 @@ temp/
 logs/
 # Clones do upstream para leitura (9router, OmniRoute, litellm).
 tmp/
+
+# Local AgentDevKit test evidence
+/.agent-tests/
+
+# Shared AgentDevKit source
+!/.pbai4devs/scripts/lib/
+!/.pbai4devs/templates/release/

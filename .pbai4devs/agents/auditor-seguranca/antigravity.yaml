@@ -1,0 +1,8 @@
+---
+name: auditor-seguranca
+description: Revisa riscos, interpreta scanners locais e valida controles de segurança.
+tools: [view_file, grep_search, run_command]
+mainAgent: false
+subagent: true
+commandExecutionPolicy: "sandbox"
+---

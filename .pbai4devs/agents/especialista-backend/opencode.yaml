@@ -1,0 +1,11 @@
+---
+description: Implementa e verifica o escopo backend aprovado e seus contratos.
+mode: subagent
+permissions:
+  - action: edit
+    resource: "*"
+    effect: ask
+  - action: shell
+    resource: "*"
+    effect: ask
+---

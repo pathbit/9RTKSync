@@ -1,0 +1,48 @@
+# MODELO: preencha os comandos da stack; valores ausentes falham.
+COMPOSE_FILE ?= infra/compose/compose.local.yml
+COMPOSE = docker compose -f $(COMPOSE_FILE)
+BUILD_COMMAND ?=
+TEST_COMMAND ?=
+LINT_COMMAND ?=
+SETUP_COMMAND ?=
+
+define DOCTOR_COMMANDS
+docker version
+docker compose version
+$(COMPOSE) config --quiet
+endef
+
+.PHONY: help doctor setup up down logs test lint build
+.DEFAULT_GOAL := help
+
+help:
+	@printf '%s\n' 'doctor setup up down logs test lint build'
+
+doctor:
+	$(DOCTOR_COMMANDS)
+
+setup:
+	$(if $(strip $(SETUP_COMMAND)),,$(error Defina SETUP_COMMAND com o preparo real do projeto))
+	$(SETUP_COMMAND)
+	$(DOCTOR_COMMANDS)
+
+up: doctor
+	$(COMPOSE) up -d --wait
+
+down:
+	$(COMPOSE) down
+
+logs:
+	$(COMPOSE) logs --follow --tail=100
+
+test:
+	$(if $(strip $(TEST_COMMAND)),,$(error Defina TEST_COMMAND com os testes reais))
+	$(TEST_COMMAND)
+
+lint:
+	$(if $(strip $(LINT_COMMAND)),,$(error Defina LINT_COMMAND com o lint real))
+	$(LINT_COMMAND)
+
+build:
+	$(if $(strip $(BUILD_COMMAND)),,$(error Defina BUILD_COMMAND com o build real))
+	$(BUILD_COMMAND)

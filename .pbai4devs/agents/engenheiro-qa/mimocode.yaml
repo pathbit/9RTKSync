@@ -1,0 +1,8 @@
+---
+description: Planeja e executa validações funcionais e adversariais com evidências.
+mode: subagent
+permission:
+  edit: deny
+  bash: ask
+  webfetch: deny
+---

@@ -1,0 +1,8 @@
+---
+description: Executa verificações reais e registra provas por critério de aceite.
+mode: subagent
+permission:
+  edit: deny
+  bash: ask
+  webfetch: deny
+---

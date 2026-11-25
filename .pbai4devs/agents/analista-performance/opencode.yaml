@@ -1,0 +1,11 @@
+---
+description: Mede desempenho e investiga regressões com cargas e evidências comparáveis.
+mode: subagent
+permissions:
+  - action: edit
+    resource: "*"
+    effect: deny
+  - action: shell
+    resource: "*"
+    effect: ask
+---

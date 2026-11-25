@@ -1,0 +1,25 @@
+{
+  "name": "webreel",
+  "description": "Validacao de roteiros e gravacao de navegador.",
+  "group": "video",
+  "source": "https://webreel.dev",
+  "download": {
+    "provider": "npm",
+    "package": "webreel",
+    "registry": "https://registry.npmjs.org/",
+    "repository": "vercel-labs/webreel",
+    "channel": "latest"
+  },
+  "platforms": [
+    "darwin-arm64",
+    "darwin-x64",
+    "linux-x64",
+    "win32-x64"
+  ],
+  "scripts": {
+    "entry": "SCRIPT.mjs"
+  },
+  "probe": [
+    "--version"
+  ]
+}

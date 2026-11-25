@@ -1,0 +1,254 @@
+{
+  "schemaVersion": 1,
+  "entrypoints": [
+    "AGENTS.md"
+  ],
+  "retiredRoots": [
+    ".agent",
+    ".gemini",
+    ".kimi"
+  ],
+  "adapters": [
+    {
+      "id": "antigravity",
+      "name": "Antigravity",
+      "root": ".agents",
+      "formats": {
+        "skills": "agrupado",
+        "agents": "plano",
+        "rules": "agrupado"
+      },
+      "discovery": "antigravity",
+      "agentMetadata": "antigravity.yaml",
+      "reason": "Grupos são registrados em manifests nativos; o scan padrão alcança apenas um nível.",
+      "sources": [
+        "https://antigravity.google/docs/customization-discovery"
+      ],
+      "aliases": [
+        "antigravity-legacy"
+      ],
+      "requires": [],
+      "extraRoots": [],
+      "entrypoints": [
+        "GEMINI.md"
+      ]
+    },
+    {
+      "id": "claude",
+      "name": "Claude Code",
+      "root": ".claude",
+      "formats": {
+        "skills": "plano",
+        "agents": "plano",
+        "commands": "arquivo"
+      },
+      "agentMetadata": "claude.yaml",
+      "ruleMetadata": "claude.yaml",
+      "reason": "Skills e agentes usam o nível documentado; comandos e regras preservam grupos. Claude também lê subagentes aninhados. Use skills/<nome>/SKILL.md.",
+      "sources": [
+        "https://code.claude.com/docs/en/skills",
+        "https://code.claude.com/docs/en/sub-agents",
+        "https://code.claude.com/docs/en/memory"
+      ],
+      "aliases": [
+        "claude-code"
+      ],
+      "requires": [],
+      "extraRoots": [],
+      "entrypoints": [
+        "CLAUDE.md"
+      ]
+    },
+    {
+      "id": "codex",
+      "name": "Codex",
+      "root": ".codex",
+      "formats": {
+        "skills": "nenhum"
+      },
+      "skillFallback": ".agents",
+      "reason": "Prioriza .agents/skills e usa .codex/skills como alternativa quando uma rota está obstruída. Outros destinos são referências.",
+      "sources": [
+        "https://learn.chatgpt.com/docs/build-skills",
+        "https://github.com/openai/codex/blob/rust-v0.171.0/codex-rs/ext/skills/src/host_roots.rs#L127-L164"
+      ],
+      "aliases": [],
+      "requires": [],
+      "extraRoots": [],
+      "entrypoints": []
+    },
+    {
+      "id": "cursor",
+      "name": "Cursor",
+      "root": ".cursor",
+      "formats": {
+        "skills": "agrupado",
+        "agents": "plano",
+        "commands": "plano",
+        "rules": "mdc"
+      },
+      "agentMetadata": "cursor.yaml",
+      "ruleMetadata": "cursor.yaml",
+      "reason": "Skills e regras aceitam grupos. Agentes e comandos mantêm o formato direto documentado; recursão desses dois tipos não foi confirmada.",
+      "sources": [
+        "https://cursor.com/docs/skills",
+        "https://cursor.com/docs/subagents",
+        "https://prod.cursor.com/help/customization/rules",
+        "https://cursor.com/docs/customize-cursor"
+      ],
+      "aliases": [],
+      "requires": [],
+      "extraRoots": [],
+      "entrypoints": []
+    },
+    {
+      "id": "copilot",
+      "name": "GitHub Copilot / VS Code",
+      "root": ".github",
+      "formats": {
+        "skills": "plano",
+        "agents": "agente",
+        "commands": "prompt",
+        "rules": "instrucoes"
+      },
+      "agentMetadata": "github.yaml",
+      "reason": "Projeções de projeto em .github. Skills usam filhos imediatos no CLI/SDK. .vscode é opcional; ~/.copilot é configuração pessoal.",
+      "sources": [
+        "https://docs.github.com/en/copilot/how-tos/copilot-cli/customize-copilot/add-skills",
+        "https://docs.github.com/en/copilot/how-tos/copilot-sdk/features/skills",
+        "https://docs.github.com/en/copilot/reference/copilot-cli-reference/cli-config-dir-reference",
+        "https://code.visualstudio.com/docs/agent-customization/custom-agents",
+        "https://code.visualstudio.com/docs/agent-customization/prompt-files"
+      ],
+      "aliases": [
+        "vscode"
+      ],
+      "requires": [],
+      "extraRoots": [
+        ".vscode"
+      ],
+      "entrypoints": []
+    },
+    {
+      "id": "opencode",
+      "name": "OpenCode",
+      "root": ".opencode",
+      "formats": {
+        "skills": "agrupado",
+        "agents": "arquivo",
+        "commands": "arquivo"
+      },
+      "agentMetadata": "opencode.yaml",
+      "reason": "OpenCode V2 busca SKILL.md em grupos até seis níveis; agentes e comandos aceitam caminhos aninhados. rules/ contém referências, não descoberta nativa.",
+      "sources": [
+        "https://opencode.ai/docs/skills",
+        "https://opencode.ai/docs/agents",
+        "https://opencode.ai/docs/commands"
+      ],
+      "aliases": [],
+      "requires": [],
+      "extraRoots": [],
+      "entrypoints": []
+    },
+    {
+      "id": "zcode",
+      "name": "ZCode",
+      "root": ".zcode",
+      "formats": {
+        "skills": "plano",
+        "agents": "plano",
+        "commands": "plano"
+      },
+      "agentMetadata": "zcode.yaml",
+      "reason": "Skills usam pastas diretas; comandos e subagentes de projeto usam arquivos Markdown diretos. Regras permanecem referências.",
+      "sources": [
+        "https://zcode.z.ai/en/docs/skill",
+        "https://zcode.z.ai/en/docs/commands",
+        "https://zcode.z.ai/en/docs/subagents"
+      ],
+      "aliases": [],
+      "requires": [],
+      "extraRoots": [],
+      "entrypoints": []
+    },
+    {
+      "id": "kimi",
+      "name": "Kimi Code",
+      "root": ".kimi-code",
+      "formats": {
+        "skills": "agrupado",
+        "agents": "plano"
+      },
+      "agentMetadata": "kimi-code.yaml",
+      "reason": "O scanner atual percorre agrupadores sem SKILL.md. Comandos precisam de plugin configurado; outros apontamentos não prometem descoberta nativa.",
+      "sources": [
+        "https://moonshotai.github.io/kimi-code/en/customization/skills",
+        "https://github.com/MoonshotAI/kimi-code/blob/482936afceaec4d513aa28f7b7e6b461e35e105f/packages/agent-core-v2/src/features/skill/catalog/fileSkillDiscovery.ts",
+        "https://moonshotai.github.io/kimi-code/en/customization/plugins.html"
+      ],
+      "aliases": [
+        "kimi-code",
+        "kimi-legacy"
+      ],
+      "requires": [],
+      "extraRoots": [],
+      "entrypoints": []
+    },
+    {
+      "id": "minimax",
+      "name": "MiniMax",
+      "root": ".minimax",
+      "formats": {
+        "skills": "plano"
+      },
+      "reason": "O scanner enumera filhos diretos da raiz e lê <nome>/SKILL.md. Agentes, comandos e regras do projeto permanecem referências.",
+      "sources": [
+        "https://github.com/MiniMax-AI/minimax-code/blob/3c21163c85a9684030cb147bfef48c6284fa3c46/packages/agent-modules/skills/src/registry.ts",
+        "https://github.com/MiniMax-AI/minimax-code/blob/3c21163c85a9684030cb147bfef48c6284fa3c46/packages/local-runtime/src/skills/roots.ts"
+      ],
+      "aliases": [],
+      "requires": [],
+      "extraRoots": [],
+      "entrypoints": []
+    },
+    {
+      "id": "mimo",
+      "name": "MiMo",
+      "root": ".mimocode",
+      "formats": {
+        "skills": "agrupado",
+        "agents": "plano",
+        "commands": "plano"
+      },
+      "agentMetadata": "mimocode.yaml",
+      "reason": "Skills usam **/SKILL.md. Agentes e comandos mantêm o nível documentado; rules/ contém referências.",
+      "sources": [
+        "https://mimo.xiaomi.com/mimocode/skills",
+        "https://mimo.xiaomi.com/mimocode/agents",
+        "https://mimo.xiaomi.com/mimocode/commands"
+      ],
+      "aliases": [
+        "xiaomi"
+      ],
+      "requires": [],
+      "extraRoots": [],
+      "entrypoints": []
+    },
+    {
+      "id": "deepseek",
+      "name": "DeepSeek",
+      "root": ".dsh",
+      "formats": {
+        "skills": "plano"
+      },
+      "reason": "O provider oficial descobre apenas <nome>/SKILL.md ou <nome>.md direto e exclui árvores aninhadas. Outros tipos são referências.",
+      "sources": [
+        "https://github.com/deepseek-ai/deepseek-harness/blob/e8f7b93a344964de3dca1ace9e72b6e4d6de87cb/packages/skill/skill-filesystem/README.md"
+      ],
+      "aliases": [],
+      "requires": [],
+      "extraRoots": [],
+      "entrypoints": []
+    }
+  ]
+}

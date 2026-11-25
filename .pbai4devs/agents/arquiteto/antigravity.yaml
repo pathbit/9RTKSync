@@ -1,0 +1,8 @@
+---
+name: arquiteto
+description: Analisa decisões de arquitetura, contratos, riscos e impactos do escopo.
+tools: [view_file, grep_search]
+mainAgent: false
+subagent: true
+commandExecutionPolicy: "off"
+---

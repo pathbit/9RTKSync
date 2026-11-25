@@ -1,0 +1,6 @@
+# Normaliza arquivos de texto e preserva arquivos binários detectados pelo Git.
+* text=auto eol=lf
+
+# Scripts do Windows usam CRLF no checkout.
+*.bat text eol=crlf
+*.cmd text eol=crlf

@@ -1,0 +1,11 @@
+---
+description: Evolui documentação existente e mantém exemplos coerentes com a entrega.
+mode: subagent
+permissions:
+  - action: edit
+    resource: "*"
+    effect: ask
+  - action: shell
+    resource: "*"
+    effect: ask
+---

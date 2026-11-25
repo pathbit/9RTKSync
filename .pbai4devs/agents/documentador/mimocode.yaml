@@ -1,0 +1,8 @@
+---
+description: Evolui documentação existente e mantém exemplos coerentes com a entrega.
+mode: subagent
+permission:
+  edit: ask
+  bash: ask
+  webfetch: deny
+---

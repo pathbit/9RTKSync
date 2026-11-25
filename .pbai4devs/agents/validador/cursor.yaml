@@ -1,0 +1,5 @@
+---
+name: validador
+description: Executa verificações reais e registra provas por critério de aceite.
+readonly: false
+---

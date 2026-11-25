@@ -1,0 +1,28 @@
+import assert from 'node:assert/strict';
+import { once } from 'node:events';
+import test from 'node:test';
+import { createApplication } from '__SERVER_IMPORT__';
+
+test('AC-001: HTTP health returns the expected state', async t => {
+  const server = createApplication();
+  server.listen(0, '127.0.0.1');
+  await once(server, 'listening');
+  t.after(() => new Promise(resolve => server.close(resolve)));
+  const response = await fetch(`http://127.0.0.1:${server.address().port}/health`);
+  assert.equal(response.status, 200);
+  assert.deepEqual(await response.json(), { status: 'ok' });
+});
+
+test('AC-002: HTTP sum computes values and rejects invalid input', async t => {
+  const server = createApplication();
+  server.listen(0, '127.0.0.1');
+  await once(server, 'listening');
+  t.after(() => new Promise(resolve => server.close(resolve)));
+  const url = `http://127.0.0.1:${server.address().port}/sum`;
+  const response = await fetch(url, { method: 'POST', body: JSON.stringify({ left: 2, right: 3 }) });
+  assert.equal(response.status, 200);
+  assert.deepEqual(await response.json(), { result: 5 });
+  const invalid = await fetch(url, { method: 'POST', body: JSON.stringify({ left: '2', right: 3 }) });
+  assert.equal(invalid.status, 400);
+  assert.deepEqual(await invalid.json(), { error: 'invalid input' });
+});

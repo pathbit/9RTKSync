@@ -1,0 +1,8 @@
+---
+name: engenheiro-qa
+description: Planeja e executa validações funcionais e adversariais com evidências.
+tools: [view_file, grep_search, run_command]
+mainAgent: false
+subagent: true
+commandExecutionPolicy: "sandbox"
+---

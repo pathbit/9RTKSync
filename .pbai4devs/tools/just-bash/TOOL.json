@@ -1,0 +1,27 @@
+{
+  "name": "just-bash",
+  "description": "Execucao de comandos em shell virtual com filesystem isolado.",
+  "group": "shell",
+  "source": "https://github.com/vercel-labs/just-bash/tree/main/packages/just-bash",
+  "download": {
+    "provider": "npm",
+    "package": "just-bash",
+    "registry": "https://registry.npmjs.org/",
+    "repository": "vercel-labs/just-bash",
+    "channel": "latest"
+  },
+  "platforms": [
+    "darwin-arm64",
+    "darwin-x64",
+    "linux-arm64",
+    "linux-x64",
+    "win32-arm64",
+    "win32-x64"
+  ],
+  "scripts": {
+    "entry": "SCRIPT.mjs"
+  },
+  "probe": [
+    "--version"
+  ]
+}

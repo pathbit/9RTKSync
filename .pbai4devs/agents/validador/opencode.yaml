@@ -1,0 +1,11 @@
+---
+description: Executa verificações reais e registra provas por critério de aceite.
+mode: subagent
+permissions:
+  - action: edit
+    resource: "*"
+    effect: deny
+  - action: shell
+    resource: "*"
+    effect: ask
+---

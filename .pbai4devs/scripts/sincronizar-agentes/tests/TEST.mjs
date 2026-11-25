@@ -1,0 +1,9 @@
+import '../../lib/test-git-environment.mjs';
+import './LOCAL_IGNORE.mjs';
+import './HUMAN_OWNERSHIP.mjs';
+import './COEXISTENCE.mjs';
+import './MANAGED_CONTENT.mjs';
+import './PRESERVATION.mjs';
+import './CATALOG_OWNERSHIP.mjs';
+import './BASE.mjs';
+import './UPDATES.mjs';

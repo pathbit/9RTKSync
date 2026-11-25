@@ -1,0 +1,8 @@
+---
+description: Analisa decisões de arquitetura, contratos, riscos e impactos do escopo.
+mode: subagent
+permission:
+  edit: deny
+  bash: deny
+  webfetch: deny
+---

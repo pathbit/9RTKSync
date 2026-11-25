@@ -1,0 +1,30 @@
+{
+  "name": "dotcontext-mcp",
+  "description": "Executa o servidor MCP local do dotcontext via stdio.",
+  "group": "workflow",
+  "optIn": true,
+  "source": "https://github.com/vinilana/dotcontext#mcp-server-setup",
+  "license": "MIT",
+  "licenseSource": "https://github.com/vinilana/dotcontext/blob/3a2733eba50cb13cf4913eb08de4e879e2cb5e23/LICENSE",
+  "download": {
+    "provider": "npm",
+    "package": "@dotcontext/mcp",
+    "registry": "https://registry.npmjs.org/",
+    "repository": "vinilana/dotcontext",
+    "channel": "latest"
+  },
+  "platforms": [
+    "darwin-arm64",
+    "darwin-x64",
+    "linux-arm64",
+    "linux-x64",
+    "win32-arm64",
+    "win32-x64"
+  ],
+  "scripts": {
+    "entry": "SCRIPT.mjs"
+  },
+  "probe": [
+    "--help"
+  ]
+}

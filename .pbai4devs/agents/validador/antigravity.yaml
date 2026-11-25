@@ -1,0 +1,8 @@
+---
+name: validador
+description: Executa verificações reais e registra provas por critério de aceite.
+tools: [view_file, grep_search, run_command]
+mainAgent: false
+subagent: true
+commandExecutionPolicy: "sandbox"
+---

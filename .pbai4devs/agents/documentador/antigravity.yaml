@@ -1,0 +1,8 @@
+---
+name: documentador
+description: Evolui documentação existente e mantém exemplos coerentes com a entrega.
+tools: [view_file, grep_search, run_command, replace_file_content]
+mainAgent: false
+subagent: true
+commandExecutionPolicy: "sandbox"
+---

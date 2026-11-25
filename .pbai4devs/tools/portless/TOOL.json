@@ -1,0 +1,30 @@
+{
+  "name": "portless",
+  "description": "Proxy local opcional e URLs de desenvolvimento.",
+  "group": "proxy",
+  "source": "https://portless.sh",
+  "download": {
+    "provider": "npm",
+    "package": "portless",
+    "registry": "https://registry.npmjs.org/",
+    "repository": "vercel-labs/portless",
+    "channel": "latest"
+  },
+  "platforms": [
+    "darwin-arm64",
+    "darwin-x64",
+    "linux-arm64",
+    "linux-x64",
+    "win32-arm64",
+    "win32-x64"
+  ],
+  "scripts": {
+    "entry": "SCRIPT.mjs"
+  },
+  "envPaths": {
+    "PORTLESS_STATE_DIR": "state"
+  },
+  "probe": [
+    "--version"
+  ]
+}

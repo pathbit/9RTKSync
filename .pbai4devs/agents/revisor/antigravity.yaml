@@ -1,0 +1,8 @@
+---
+name: revisor
+description: Revisa alterações e critérios de aceite em modo de leitura.
+tools: [view_file, grep_search]
+mainAgent: false
+subagent: true
+commandExecutionPolicy: "off"
+---

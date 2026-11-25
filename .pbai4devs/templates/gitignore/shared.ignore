@@ -1,0 +1,63 @@
+# Pastas irmas: templates/gitignore/local.ignore e .git/info/exclude.
+# Derivados locais
+/catalog.json
+/skills.json
+/agents.json
+/rules.json
+/espelhos.conf
+/estado/agentdevkit.json
+/estado/derived.json
+/state/agentdevkit.json
+/state/derived.json
+
+# Downloads e launchers de ferramentas
+/tools/bin/
+/tools/npm-cache/
+/tools/*/CURRENT.json
+/external-skills/*/
+
+# ---------------------------
+# CUSTOM IGNORE
+# ---------------------------
+
+## Estado local, caches e credenciais conhecidas
+**/.[Ll][Oo][Cc][Aa][Ll]/
+**/.[Cc][Aa][Cc][Hh][Ee]/
+/[Cc][Aa][Cc][Hh][Ee]/
+**/[Nn][Oo][Dd][Ee]_[Mm][Oo][Dd][Uu][Ll][Ee][Ss]/
+**/__pycache__/
+**/.DS_Store
+**/._*
+**/Thumbs.db
+**/Desktop.ini
+**/*.[Ss][Ww][Pp]
+**/*.[Ss][Ww][Oo]
+**/*~
+**/[Ss][Ee][Ss][Ss][Ii][Oo][Nn][Ss]/
+**/[Ll][Oo][Gg][Ss]/
+**/[Oo][Pp][Ee][Nn][Cc][Oo][Dd][Ee]-[Ll][Oo][Oo][Pp]/
+**/[Aa][Uu][Tt][Hh].[Jj][Ss][Oo][Nn]
+**/[Cc][Rr][Ee][Dd][Ee][Nn][Tt][Ii][Aa][Ll][Ss].[Jj][Ss][Oo][Nn]
+**/[Hh][Ii][Ss][Tt][Oo][Rr][Yy].[Jj][Ss][Oo][Nn][Ll]
+**/*.[Ll][Oo][Cc][Aa][Ll].[Jj][Ss][Oo][Nn]
+**/*.[Ll][Oo][Cc][Aa][Ll].[Jj][Ss][Oo][Nn][Cc]
+**/*.[Ll][Oo][Cc][Aa][Ll].[Tt][Oo][Mm][Ll]
+**/*.[Ll][Oo][Cc][Aa][Ll].[Yy][Aa][Mm][Ll]
+**/*.[Ll][Oo][Cc][Aa][Ll].[Yy][Mm][Ll]
+**/*.[Ll][Oo][Gg]
+**/.[Ee][Nn][Vv]
+**/.[Ee][Nn][Vv].*
+!**/.env.example
+!**/.env.sample
+!**/.env.template
+!**/.env.*.example
+
+## Resultados e arquivos temporarios
+**/.[Aa][Gg][Ee][Nn][Tt]-[Tt][Ee][Ss][Tt][Ss]/
+**/[Tt][Ee][Ss][Tt][Rr][Ee][Ss][Uu][Ll][Tt][Ss]/
+**/[Tt][Ee][Ss][Tt]-[Rr][Ee][Ss][Uu][Ll][Tt][Ss]/
+**/.[Pp][Ll][Aa][Yy][Ww][Rr][Ii][Gg][Hh][Tt]*
+**/[Pp][Ll][Aa][Yy][Ww][Rr][Ii][Gg][Hh][Tt]*/
+**/[Bb][Ll][Oo][Bb]-[Rr][Ee][Pp][Oo][Rr][Tt]/
+**/[Tt][Mm][Pp]/
+**/[Tt][Ee][Mm][Pp]/

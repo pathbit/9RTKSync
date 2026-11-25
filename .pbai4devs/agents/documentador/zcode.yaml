@@ -1,0 +1,5 @@
+---
+name: documentador
+description: Evolui documentação existente e mantém exemplos coerentes com a entrega.
+tools: [Read, Grep, Glob, Bash, Edit, Write]
+---
