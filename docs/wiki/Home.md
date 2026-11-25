@@ -60,7 +60,7 @@ queries the SQLite database.
 ## The sibling project
 
 If you run [OmniRoute](https://github.com/diegosouzapw/OmniRoute) instead of 9Router, use
-[OmniRTKSync](https://github.com/pathbit/OmniRTkSync), which targets that gateway's relational
+[OmniRTKSync](https://github.com/pathbit/OmniRTKSync), which targets that gateway's relational
 schema. The two projects share the same dashboard, logging, authentication and configuration
 contract; only the database layer and the provider set differ.
 
