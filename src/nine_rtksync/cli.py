@@ -165,6 +165,13 @@ def main():
     if args.once:
         engine = SyncEngine(settings)
         res = engine.sync_all()
+        if not res["success"]:
+            reason = res.get("error") or "one or more connections could not be synchronized; check the log"
+            print(f"[ERROR] Synchronization failed: {reason}", file=sys.stderr)
+            raise SystemExit(1)
+        if res.get("waiting_for_gateway"):
+            print("[*] Waiting for the gateway to create its database.")
+            return
         print(f"[*] Synchronization completed: {res['total_connections']} connections inspected, {res['normalized']} normalized, {res['refreshed']} renewed.")
         return
 

@@ -2,7 +2,10 @@
 
 import io
 import os
+from pathlib import Path
 import sqlite3
+import subprocess
+import sys
 import tempfile
 import unittest
 from unittest.mock import patch
@@ -85,6 +88,45 @@ class TestCLI(unittest.TestCase):
                 main()
         output = f.getvalue()
         self.assertIn("Synchronization completed", output)
+
+    def run_once_in_isolation(self, db_path):
+        source = Path(__file__).resolve().parents[1] / "src"
+        with tempfile.TemporaryDirectory() as workspace:
+            environment = {
+                "PYTHONPATH": str(source),
+                "HOST_HOME": workspace,
+                "DATA_DIR": workspace,
+                "LOG_DIR": os.path.join(workspace, "logs"),
+                "LOG_TO_STDOUT": "0",
+            }
+            if os.name == "nt":
+                environment["SystemRoot"] = os.environ["SystemRoot"]
+            return subprocess.run(
+                [sys.executable, "-m", "nine_rtksync", "--once", "--db-path", str(db_path)],
+                cwd=workspace,
+                env=environment,
+                capture_output=True,
+                text=True,
+                timeout=10,
+            )
+
+    def test_cli_once_reports_corrupt_database_without_traceback(self):
+        invalid_db = Path(self.db_path)
+        invalid_db.write_text("This is a synthetic invalid database.", encoding="utf-8")
+
+        result = self.run_once_in_isolation(invalid_db)
+
+        self.assertEqual(result.returncode, 1)
+        self.assertIn("Synchronization failed: file is not a database", result.stderr)
+        self.assertNotIn("Traceback", result.stderr)
+        self.assertNotIn("Synchronization completed", result.stdout)
+
+    def test_cli_once_reports_waiting_for_missing_database(self):
+        result = self.run_once_in_isolation(Path(self.db_path).with_suffix(".missing"))
+
+        self.assertEqual(result.returncode, 0)
+        self.assertIn("Waiting for the gateway to create its database", result.stdout)
+        self.assertNotIn("Synchronization completed", result.stdout)
 
 
 if __name__ == "__main__":
