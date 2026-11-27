@@ -1247,3 +1247,9 @@ tmp/
 # Shared AgentDevKit source
 !/.pbai4devs/scripts/lib/
 !/.pbai4devs/templates/release/
+
+# Local AgentModelKit configuration and backups
+/.opencode/opencode.json
+/.opencode/opencode.json*.bak
+/.opencode/agentmodelkit-models.json
+/.opencode/agentmodelkit-models.json*.bak
