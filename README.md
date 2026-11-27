@@ -350,21 +350,13 @@ python3 -m unittest tests/test_container.py -v
 
 ---
 
-## AgentDevKit
+## AgentDevKit and AgentModelKit
 
-The [shared kit](.pbai4devs/README.md), [Codex references](.codex/) and
-[AGENTS.md](AGENTS.md) are included in the repository.
+The repository includes the [shared AgentDevKit resources](.pbai4devs/README.md),
+[Codex references](.codex/) and [AGENTS.md](AGENTS.md). Use the quick start to
+select coding agents, check your setup and configure models for OpenCode.
 
-The kit CLI requires [Node.js 24+ with npm and npx](https://nodejs.org/en/download).
-Run this from the project root to generate the local selection and indexes.
-
-```console
-npx @pathbit/agentdevkit@0.0.39 init
-```
-
-On the first run, the CLI adds a managed reference block to `AGENTS.md`.
-Use the arrow keys and **Space** to select agents. Press **Enter** to confirm.
-The guide also covers updates and diagnostics. [AgentDevKit quick start](https://github.com/pathbit/AgentDevKit/blob/main/README.en.md#quick-start)
+[Português do Brasil](docs/agent-tools.md) · [English](docs/agent-tools.en.md) · [Español](docs/agent-tools.es.md)
 
 ---
 
