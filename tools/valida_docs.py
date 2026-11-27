@@ -39,7 +39,7 @@ RX_COMANDO_DE_TERCEIRO = re.compile(
     # `apt`: a página de acesso federado mostra as linhas que instalam a
     # biblioteca de SAML na imagem, e `--no-cache` e `--virtual` são flags DELE.
     r"\b(pip|pip3|docker|docker[- ]compose|git|curl|wget|tailscale|cloudflared|make|npm|npx|"
-    r"apt|apt-get|apk|brew|systemctl|python3?\s+-m\s+venv|openssl|psql)\b"
+    r"apt|apt-get|apk|brew|systemctl|python3?\s+-m\s+venv|openssl|psql|opencode\s+models)\b"
 )
 
 # Flags que pertencem a outro programa e aparecem em prosa, sem o comando na
@@ -74,6 +74,7 @@ NAO_SAO_VARIAVEIS = {
 # Lista nomeada, e não padrão: cada entrada diz de onde veio, e uma variável
 # nossa escrita errada continua sendo acusada.
 VARIAVEIS_DE_TERCEIROS = {
+    "OPENCODE_API_KEY",  # OpenCode Console credential used by AgentModelKit
     # litellm/proxy/hooks/__init__.py:31, LiteLLM 1.102.0
     "LEGACY_MULTI_INSTANCE_RATE_LIMITING",
     # Flag dos composes do 9RTKSync e do OmniRTKSync. A pagina de encadeamento

@@ -12,7 +12,7 @@ npx --yes --ignore-scripts @pathbit/agentdevkit@0.0.41 init
 
 On first use, choose the language and setup purpose. Use the arrow keys to navigate, **Space** to select clients, and **Enter** to confirm. The repository includes Codex references and shared resources in `.pbai4devs`. Your client selection stays in the local checkout.
 
-To change the selection after initial setup, run `agents --select`. Run `doctor` to check the setup. For initial setup, use `@latest` for the current stable release or pin the version to reproduce the tested setup.
+To change the selection after initial setup, run the first command below. Run `doctor` to check the setup. For initial setup, use `@latest` for the current stable release or pin the version to reproduce the tested setup.
 
 ```console
 npx --yes --ignore-scripts @pathbit/agentdevkit@0.0.41 agents --select
@@ -22,7 +22,7 @@ npx --yes --ignore-scripts @pathbit/agentdevkit@latest init
 
 ## Configure models with AgentModelKit
 
-This example configures OpenCode Console models for the current project. Keep `OPENCODE_API_KEY` in the OpenCode environment. The CLI writes the variable reference and leaves the key in the environment. Add `--dry-run` to preview the changes.
+This example configures OpenCode Console models for the current project. Keep `OPENCODE_API_KEY` in the OpenCode environment. The CLI writes the variable reference and leaves the key in the environment. Add `--dry-run` to the `npx` command below to preview the changes.
 
 ```console
 npx --yes --ignore-scripts @pathbit/agentmodelkit@0.0.3 add --providers opencode --tiers payg --targets opencode --project-dir . --no-save-key --yes
