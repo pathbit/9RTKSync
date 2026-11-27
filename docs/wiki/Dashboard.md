@@ -44,7 +44,7 @@ Every control is a real HTTP request that redirects back to the freshly rendered
 | **Refresh** | Plain link to `/`; re-reads the database and re-renders. |
 | **Sync now** | Runs one full scheduler cycle (`POST /acoes/cron`), then reports what changed. |
 | **Test connection** | Invalidates the 30 s probe cache and really calls the gateway. |
-| **Settings** | Opens the single sign-on screen (`POST /acoes/sso`), which asks for the current panel password on top of the session. See [Single Sign-On](Single-Sign-On). |
+| **Settings** | Opens the single sign-on screen (`POST /acoes/sso`), which asks for the current panel password on top of the session. See [Single Sign-On](Single-Sign-On.md). |
 
 The page is served with `Cache-Control: no-store, must-revalidate`, so a browser reload always
 hits the server.
@@ -82,7 +82,7 @@ A cycle with nothing to do shows as exactly that, rather than an empty screen yo
 about.
 
 The in-memory history keeps the last cycles; the durable record is the file log
-(see [Logging](Logging)).
+(see [Logging](Logging.md)).
 
 ---
 
@@ -118,7 +118,7 @@ of being assumed healthy.
 - `/api/status` no longer sends `Access-Control-Allow-Origin: *`.
 - Publish the port on `127.0.0.1` only.
 
-More in [Authentication](Authentication).
+More in [Authentication](Authentication.md).
 
 ---
 

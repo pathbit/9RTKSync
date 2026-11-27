@@ -5,9 +5,7 @@
 credential formats the gateway cannot read, clears stale rate-limit locks, and reports exactly
 why each connection was or was not renewed.
 
-This wiki is generated from [`docs/wiki/`](https://github.com/pathbit/9RTKSync/tree/main/docs/wiki)
-in the main repository. Edit the files there and open a pull request — a push to `main`
-republishes these pages automatically. Editing a page directly here will be overwritten.
+The source of these guides is [`docs/wiki/`](https://github.com/pathbit/9RTKSync/tree/main/docs/wiki) in the main repository. Open a pull request there to update the guides. GitHub Actions republishes them when changes reach `main` after the Wiki has been initialized.
 
 ---
 
@@ -15,20 +13,20 @@ republishes these pages automatically. Editing a page directly here will be over
 
 | Page | What it covers |
 | :--- | :--- |
-| [Installation](Installation) | Docker Compose and local virtual environment |
-| [Docker Deployment](Docker-Deployment) | Docker run, Compose, Headroom, Caveman, Tunnel, Tailscale |
-| [Configuration](Configuration) | Every environment variable — the full headless contract |
-| [Dashboard](Dashboard) | The server-rendered panel, language switcher, cron logs |
-| [Authentication](Authentication) | Credentials, headless mode, break-glass recovery |
-| [Single Sign-On](Single-Sign-On) | Optional OIDC sign-in beside the local form, and how to get back in when the provider is down |
-| [Logging](Logging) | Persistent file log, rotation, 30-day retention |
-| [Architecture](Architecture) | How the sync engine talks to the 9Router database |
-| [Remote Access](Remote-Access) | Tunnel, Tailscale, and what has to be on before either |
-| [Egress Testing](Egress-Testing) | A bench that proves where the traffic actually leaves from |
-| [Egress and Multi-Session](Egress-And-Multi-Session) | Why several accounts sharing one outbound address is the risk, and what the gateway models |
-| [Licensing and Capacity](Licensing-And-Capacity) | How many subscriptions for how many developers, and which field answers it |
-| [Troubleshooting](Troubleshooting) | Concrete symptoms and what they actually mean |
-| [Upstream Fixes](Upstream-Fixes) | Bugs found in the gateways and the patches sent upstream |
+| [Installation](Installation.md) | Docker Compose and local virtual environment |
+| [Docker Deployment](Docker-Deployment.md) | Docker run, Compose, Headroom, Caveman, Tunnel, Tailscale |
+| [Configuration](Configuration.md) | Every environment variable — the full headless contract |
+| [Dashboard](Dashboard.md) | The server-rendered panel, language switcher, cron logs |
+| [Authentication](Authentication.md) | Credentials, headless mode, break-glass recovery |
+| [Single Sign-On](Single-Sign-On.md) | Optional OIDC sign-in beside the local form, and how to get back in when the provider is down |
+| [Logging](Logging.md) | Persistent file log, rotation, 30-day retention |
+| [Architecture](Architecture.md) | How the sync engine talks to the 9Router database |
+| [Remote Access](Remote-Access.md) | Tunnel, Tailscale, and what has to be on before either |
+| [Egress Testing](Egress-Testing.md) | A bench that proves where the traffic actually leaves from |
+| [Egress and Multi-Session](Egress-And-Multi-Session.md) | Why several accounts sharing one outbound address is the risk, and what the gateway models |
+| [Licensing and Capacity](Licensing-And-Capacity.md) | How many subscriptions for how many developers, and which field answers it |
+| [Troubleshooting](Troubleshooting.md) | Concrete symptoms and what they actually mean |
+| [Upstream Fixes](Upstream-Fixes.md) | Bugs found in the gateways and the patches sent upstream |
 
 ---
 
@@ -90,7 +88,7 @@ password on the screen:
 docker exec 9rtk-sync cat /app/data/db/.dashboard_recovery
 ```
 
-Full detail in [Authentication](Authentication).
+Full detail in [Authentication](Authentication.md).
 
 ## License
 

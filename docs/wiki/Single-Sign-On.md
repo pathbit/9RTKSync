@@ -57,7 +57,7 @@ The optional dependency handles XML canonicalization and signature verification.
 tunnel gets a new address on every start, and the return address you registered
 at the provider stops matching the moment it changes — every sign-in then fails
 with a provider-side error you cannot fix from here. Use a named tunnel or
-Tailscale. See [Remote Access](Remote-Access).
+Tailscale. See [Remote Access](Remote-Access.md).
 
 1. **In the Google Cloud console**, create an OAuth client of type *Web
    application*.
@@ -116,7 +116,7 @@ Nothing here traps you outside the panel. In increasing order of bluntness:
 
 1. **The local form never leaves the screen.** Your panel user and password
    still work, always.
-2. **The recovery credential still works.** See [Authentication](Authentication).
+2. **The recovery credential still works.** See [Authentication](Authentication.md).
 3. **The non-HTML door is untouched.** `curl`, cron and monitoring keep signing
    in with Basic Auth, which never goes through single sign-on.
 4. **The button disappears on its own.** The sign-in screen asks the provider
@@ -227,7 +227,7 @@ A dependência opcional trata a canonicalização e a verificação da assinatur
 **Antes de tudo**: a entrada federada exige um **endereço público fixo**. O túnel
 rápido troca de endereço a cada subida, e o endereço de retorno cadastrado no
 provedor deixa de bater no instante em que isso acontece. Use túnel nomeado ou
-Tailscale — veja [Remote Access](Remote-Access).
+Tailscale — veja [Remote Access](Remote-Access.md).
 
 1. **No console do Google Cloud**, crie um cliente OAuth do tipo *aplicação web*.
 2. Cadastre o **endereço de retorno autorizado**. O painel mostra a linha exata
@@ -281,7 +281,7 @@ Nada aqui tranca você do lado de fora. Em ordem crescente de contundência:
 
 1. **O formulário local nunca sai da tela.** O seu usuário e senha continuam
    valendo, sempre.
-2. **A credencial de recuperação continua valendo.** Veja [Authentication](Authentication).
+2. **A credencial de recuperação continua valendo.** Veja [Authentication](Authentication.md).
 3. **A porta não-HTML está intocada.** `curl`, cron e monitoramento continuam
    entrando por Basic Auth, que nunca passa pelo SSO.
 4. **O botão some sozinho.** A tela pergunta ao provedor pelo documento de

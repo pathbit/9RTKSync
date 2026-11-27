@@ -289,7 +289,7 @@ state exists only for the HTTP 429 an API-key probe can receive
 `[FONTE: src/nine_rtksync/credential_check.py:115-116]`. A quota-exhausted
 account has a perfectly live token.
 
-See [Dashboard](Dashboard) for what each badge does mean.
+See [Dashboard](Dashboard.md) for what each badge does mean.
 
 ### Where the answer actually is
 
@@ -340,7 +340,7 @@ Which turns the file log into the counter nobody else keeps. The file is
 `9rtksync.log` and retention is 30 days by default — `DEFAULT_RETENTION_DAYS = 30`,
 overridable by `LOG_RETENTION_DAYS`
 `[FONTE: src/nine_rtksync/logs.py:24-25 and 31-34]` — so the week of history the
-rule below needs is always there (see [Logging](Logging); the shipped stack points
+rule below needs is always there (see [Logging](Logging.md); the shipped stack points
 `LOG_DIR` at `/app/logs`):
 
 ```bash
@@ -445,7 +445,7 @@ Several sessions on one account are unremarkable. What draws attention is the
 inverse — several **accounts** leaving through one address, which is the natural
 shape of a gateway with everyone's account registered in it. Sizing a team up
 walks straight into that, so read
-[Egress and Multi-Session](Egress-And-Multi-Session) before you add the tenth
+[Egress and Multi-Session](Egress-And-Multi-Session.md) before you add the tenth
 account, and note its trap: an inactive pool, or one with no address, raises no
 error — the connection silently falls back to the host's address.
 
@@ -638,7 +638,7 @@ responde outra pergunta. A sondagem também não salva: para OAuth ela pergunta 
 `[FONTE: src/nine_rtksync/credential_check.py:238-255]`, e o estado
 `rate_limited` só existe para o 429 que uma sondagem de chave recebe
 `[FONTE: src/nine_rtksync/credential_check.py:115-116]`. Conta sem cota tem token
-vivo. Veja [Dashboard](Dashboard) para o que cada badge de fato significa.
+vivo. Veja [Dashboard](Dashboard.md) para o que cada badge de fato significa.
 
 **Onde a resposta está.** No banco, com a consulta validada contra um banco
 sintético de mesmo esquema (12/09/2026):
@@ -677,7 +677,7 @@ são do formatador do handler, `"[%(asctime)s] [%(levelname)s] %(message)s"`
 abaixo casarem. O arquivo é o `9rtksync.log`, com
 retenção de 30 dias por padrão — `DEFAULT_RETENTION_DAYS = 30`, ajustável por
 `LOG_RETENTION_DAYS` `[FONTE: src/nine_rtksync/logs.py:24-25 e 31-34]` — o que dá
-a semana de histórico que a regra abaixo pede (veja [Logging](Logging); a stack de
+a semana de histórico que a regra abaixo pede (veja [Logging](Logging.md); a stack de
 exemplo aponta `LOG_DIR` para `/app/logs`):
 
 ```bash
@@ -762,7 +762,7 @@ coluna: mesma forma, mesmo `[A MEDIR]`, formato de expiração diferente.
 Várias sessões numa conta não incomodam. O que chama atenção é o inverso: várias
 **contas** saindo pelo mesmo endereço, que é a forma natural de um gateway com a
 conta de todo mundo cadastrada. Crescer o time cai direto nisso — leia
-[Egress and Multi-Session](Egress-And-Multi-Session) antes da décima conta, e
+[Egress and Multi-Session](Egress-And-Multi-Session.md) antes da décima conta, e
 note a armadilha: pool inativo, ou sem endereço, não gera erro; a conexão cai em
 silêncio para o endereço do host.
 
