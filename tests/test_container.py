@@ -8,6 +8,7 @@ Garante que a imagem Docker gerada:
 5. Permite executar a CLI (9rtksync --help) com sucesso dentro do container.
 """
 
+from contextlib import closing
 import os
 import time
 import unittest
@@ -18,55 +19,34 @@ RAIZ = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DOCKER_IMAGE_PADRAO = "9rtksync:test"
 
 
-def docker_disponivel() -> bool:
-    try:
-        import docker
-        cliente = docker.from_env()
-        cliente.ping()
-        return True
-    except Exception:
-        return False
-
-
-def obter_ou_construir_imagem(nome_imagem: str) -> str:
-    import docker
-
-    cliente = docker.from_env()
-    imagens = cliente.images.list(name=nome_imagem)
-    if imagens:
-        return nome_imagem
-
-    # Constrói localmente se não existir pré-construída
-    dockerfile = os.path.join(RAIZ, "Dockerfile")
-    if os.path.exists(dockerfile):
-        imagem, _ = cliente.images.build(path=RAIZ, tag=nome_imagem, rm=True)
-        return nome_imagem
-
-    raise RuntimeError(f"Imagem {nome_imagem} não encontrada e Dockerfile não localizado em {RAIZ}")
-
-
 class Test9RTKSyncContainer(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
+        requested_image = os.environ.get("TEST_DOCKER_IMAGE")
+        cls.imagem = requested_image or DOCKER_IMAGE_PADRAO
         try:
-            import testcontainers
             import docker
-        except ImportError:
-            raise unittest.SkipTest("testcontainers ou docker não estão instalados")
+            from testcontainers.core.container import DockerContainer
 
-        if not docker_disponivel():
-            raise unittest.SkipTest("Docker daemon não está disponível ou acessível")
-
-        cls.imagem = os.environ.get("TEST_DOCKER_IMAGE", DOCKER_IMAGE_PADRAO)
-        try:
-            cls.imagem = obter_ou_construir_imagem(cls.imagem)
-        except Exception as e:
-            raise unittest.SkipTest(f"Falha ao obter ou construir imagem Docker: {e}")
+            cls.container_type = DockerContainer
+            with closing(docker.from_env()) as client:
+                client.ping()
+                try:
+                    client.images.get(cls.imagem)
+                except docker.errors.ImageNotFound:
+                    if requested_image:
+                        raise
+                    client.images.build(path=RAIZ, tag=cls.imagem, rm=True)
+        except Exception as error:
+            message = f"Docker test setup failed for {cls.imagem}: {error}"
+            if requested_image:
+                raise RuntimeError(message) from error
+            raise unittest.SkipTest(message) from error
 
     def test_container_web_dashboard_e_cli(self):
-        from testcontainers.core.container import DockerContainer
-
-        with DockerContainer(self.imagem).with_exposed_ports(9090) as container:
+        container = self.container_type(self.imagem).with_exposed_ports(9090)
+        container.with_env("DB_PATH", "/app/data/qa-missing/data.sqlite")
+        with container:
             host = container.get_container_host_ip()
             porta = container.get_exposed_port(9090)
             url_login = f"http://{host}:{porta}/login"
@@ -96,24 +76,14 @@ class Test9RTKSyncContainer(unittest.TestCase):
                 self.assertIn("9RTKSync", corpo)
                 self.assertIn("<!DOCTYPE html>", corpo)
 
-            # 3. Valida resposta do endpoint /healthz
-            try:
-                with urllib.request.urlopen(url_healthz, timeout=5) as resp:
-                    status_healthz = resp.status
-                    corpo_healthz = resp.read().decode("utf-8")
-                    cabecalho_server = resp.headers.get("Server", "")
-            except urllib.error.HTTPError as e:
-                status_healthz = e.code
-                corpo_healthz = e.read().decode("utf-8")
-                cabecalho_server = e.headers.get("Server", "")
-
-            # Sem banco montado e sem gateway externo, o healthz esperado é 503 DATABASE_NOT_READY
-            self.assertIn(status_healthz, (200, 503))
-            self.assertEqual(cabecalho_server, "9RTKSync")
-            self.assertTrue(
-                "OK" in corpo_healthz or "DATABASE_NOT_READY" in corpo_healthz or "ROUTER_SERVICE_UNREACHABLE" in corpo_healthz,
-                f"Corpo inesperado do healthz: {corpo_healthz}",
-            )
+            # The container has no gateway database mounted.
+            with self.assertRaises(urllib.error.HTTPError) as error:
+                with urllib.request.urlopen(url_healthz, timeout=5):
+                    pass
+            with error.exception as response:
+                self.assertEqual(response.code, 503)
+                self.assertEqual(response.headers.get("Server"), "9RTKSync")
+                self.assertEqual(response.read(), b"DATABASE_NOT_READY")
 
             # 4. Valida execução da CLI dentro do container
             codigo_saida, saida = container.exec(["9rtksync", "--help"])

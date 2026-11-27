@@ -129,10 +129,10 @@ side of the mapping in the compose file — the right side is the internal port,
 the one the process listens on.
 
 
-GitHub Actions builds the official GHCR images on application or Docker build changes to `main` and on version tags. To deploy a specific release, use its numeric image tag in Compose or Docker. Use `:latest` to follow the rolling image. The [latest GitHub Release](https://github.com/pathbit/9RTKSync/releases/latest) lists the current release tag. See the [Docker Deployment Guide](docs/wiki/Docker-Deployment.md) for deployment and retention details.
+GitHub Actions publishes the official GHCR images for version tags after checking the CLI on both architectures and the dashboard in the release container. Use a numeric tag to pin a release or `:latest` to follow the newest stable release. The [latest GitHub Release](https://github.com/pathbit/9RTKSync/releases/latest) lists the current version and image digest. See the [Docker Deployment Guide](docs/wiki/Docker-Deployment.md) for commands.
 
 ```bash
-docker pull ghcr.io/pathbit/9rtksync:1.0.3
+docker pull ghcr.io/pathbit/9rtksync:1.0.4
 docker pull ghcr.io/pathbit/9rtksync:latest
 ```
 
@@ -350,8 +350,10 @@ Validates that the generated Docker image boots cleanly, exposes the web dashboa
 # Install package with test dependencies
 pip install ".[test]"
 
-# Run Testcontainers validation suite
-python3 -m unittest tests/test_container.py -v
+docker build -t 9rtksync:test .
+
+# Run Testcontainers against the image you built
+TEST_DOCKER_IMAGE=9rtksync:test python3 -m unittest tests/test_container.py -v
 ```
 
 ---
