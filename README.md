@@ -3,7 +3,7 @@
 [![CI](https://github.com/pathbit/9RTKSync/actions/workflows/ci.yml/badge.svg)](https://github.com/pathbit/9RTKSync/actions/workflows/ci.yml)
 [![Release and Docker Package](https://github.com/pathbit/9RTKSync/actions/workflows/release.yml/badge.svg)](https://github.com/pathbit/9RTKSync/actions/workflows/release.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Python Version](https://img.shields.io/badge/python-3.14.7-blue.svg)](https://www.python.org/ftp/python/3.14.7/python-3.14.7-macos11.pkg)
+[![Python Version](https://img.shields.io/badge/python-3.10%2B-blue.svg)](https://www.python.org/downloads/)
 [![Docker Package](https://img.shields.io/badge/docker-ghcr.io%2Fpathbit%2F9rtksync-blue)](https://github.com/pathbit/9RTKSync/pkgs/container/9rtksync)
 
 **`9RTKSync`** (*9Router Universal Token & Connection Synchronizer*) is a high-availability self-healing guardian for [9Router](https://github.com/decolua/9router) gateways. It eliminates sudden disconnects, premature OAuth token expirations, date format corruptions, and lingering rate-limit locks, keeping all connected accounts healthy and persistent.
@@ -16,6 +16,11 @@ environment-variable contract, the dashboard, authentication and break-glass rec
 persistent logging, architecture, troubleshooting, and the upstream gateway fixes.
 
 Edit the files in `docs/wiki/` and open a pull request to update the documentation.
+
+## Prerequisites
+
+- For Docker deployment, install [Docker with Compose](https://docs.docker.com/compose/install/). The official images support `linux/amd64` and `linux/arm64`.
+- For local development, install [Python 3.10 or later](https://www.python.org/downloads/) and use a virtual environment.
 
 ---
 
@@ -124,9 +129,10 @@ side of the mapping in the compose file — the right side is the internal port,
 the one the process listens on.
 
 
-Official multi-architecture Docker images (`linux/amd64` and `linux/arm64`) are published automatically to the GitHub Container Registry (GHCR) when application or Docker build files change on `main`, and on version tags (`v*.*.*`). An automated retention policy maintains strictly the last 3 versions. For a complete deployment guide covering Docker run, Compose, Headroom, Caveman, Cloudflare Tunnel, and Tailscale, see [Docker Deployment Guide](docs/wiki/Docker-Deployment.md).
+GitHub Actions builds the official GHCR images on application or Docker build changes to `main` and on version tags. To deploy a specific release, use its numeric image tag in Compose or Docker. Use `:latest` to follow the rolling image. The [latest GitHub Release](https://github.com/pathbit/9RTKSync/releases/latest) lists the current release tag. See the [Docker Deployment Guide](docs/wiki/Docker-Deployment.md) for deployment and retention details.
 
 ```bash
+docker pull ghcr.io/pathbit/9rtksync:1.0.3
 docker pull ghcr.io/pathbit/9rtksync:latest
 ```
 
@@ -223,7 +229,7 @@ networks:
 
 ## Local Development in Virtual Environment
 
-Following standard environment isolation, local runs strictly use a Python virtual environment with [Python 3.14.7](https://www.python.org/ftp/python/3.14.7/python-3.14.7-macos11.pkg):
+Use a virtual environment for local runs. The package requires Python 3.10 or later. CI tests Python 3.11 through 3.14, and the Docker image uses Python 3.14.
 
 ### 1. Clone the Repository
 
@@ -327,7 +333,7 @@ docker compose -f docker-compose.test.yml down -v
 
 ### Option 2. Local Virtual Environment (Optional Prerequisites)
 
-If you prefer testing directly on your host with Python 3.14+:
+To run the tests directly on your host, use a supported Python version in a virtual environment.
 
 ```bash
 source .venv/bin/activate

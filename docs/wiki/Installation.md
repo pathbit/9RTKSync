@@ -109,7 +109,7 @@ Then open **http://localhost:9091**.
 
 ## Local virtual environment
 
-Requires Python 3.11+ (3.14 is what CI pins).
+Requires [Python 3.10 or later](https://www.python.org/downloads/). CI tests Python 3.11 through 3.14, and the official Docker image uses Python 3.14.
 
 ```bash
 git clone https://github.com/pathbit/9RTKSync.git
