@@ -11,7 +11,7 @@
 
 ## Documentation
 
-The [project documentation](docs/wiki/) covers installation, the complete
+The [project documentation](docs/wiki/Home.md) covers installation, the complete
 environment-variable contract, the dashboard, authentication and break-glass recovery,
 persistent logging, architecture, troubleshooting, and the upstream gateway fixes.
 

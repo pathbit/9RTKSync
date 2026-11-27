@@ -87,4 +87,4 @@ that runs without the log.
 
 Separately from the file log, the scheduler keeps the last cycles in memory with the actions each
 one produced. The **Logs** button on the scheduler card opens the history; a failed cycle is
-flagged in red and its error is shown inline. See [Dashboard](Dashboard).
+flagged in red and its error is shown inline. See [Dashboard](Dashboard.md).

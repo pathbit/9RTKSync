@@ -93,7 +93,7 @@ Two conventions matter:
 
 The sibling project targets a relational schema where the same field is a TEXT column, and the
 rules are different. Getting this wrong silently disables the gateway's proactive refresh — see
-[Upstream Fixes](Upstream-Fixes).
+[Upstream Fixes](Upstream-Fixes.md).
 
 ---
 

@@ -102,7 +102,7 @@ docker exec 9rtk-sync cat /app/data/.dashboard_recovery
 ```
 
 To pin your own instead of relying on the generated one, set `DASHBOARD_RECOVERY_HASH` and
-restart. See [Authentication](Authentication).
+restart. See [Authentication](Authentication.md).
 
 ---
 
@@ -144,4 +144,4 @@ Two separate causes, worth telling apart:
   `modelLock_*` entries and resets `backoffLevel` on every sweep. Check the scheduler **Logs**
   for a `Rate limit lock removed` line.
 - **A gateway-side parsing bug.** Both upstream gateways had a bug where a credential expiry in
-  certain shapes silently disabled their own proactive refresh. See [Upstream Fixes](Upstream-Fixes).
+  certain shapes silently disabled their own proactive refresh. See [Upstream Fixes](Upstream-Fixes.md).

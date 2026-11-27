@@ -1,7 +1,7 @@
 # Installation
 
 Two supported paths: Docker (recommended) and a local Python virtual environment.
-For a complete guide covering Docker run, Compose, Headroom, Caveman, Tunnel, and Tailscale, see [Docker Deployment](Docker-Deployment).
+For a complete guide covering Docker run, Compose, Headroom, Caveman, Tunnel, and Tailscale, see [Docker Deployment](Docker-Deployment.md).
 
 ---
 
@@ -103,7 +103,7 @@ Then open **http://localhost:9091**.
   writes there.
 - **The port is bound to `127.0.0.1`.** The panel reads credential metadata; it must not be
   reachable from the internet.
-- **A named volume for the logs.** Otherwise they die with the container. See [Logging](Logging).
+- **A named volume for the logs.** Otherwise they die with the container. See [Logging](Logging.md).
 
 ---
 
@@ -138,7 +138,7 @@ pip install -e .
 ```
 
 `--db-path` is optional: without it the synchronizer probes the usual locations. See
-[Configuration](Configuration).
+[Configuration](Configuration.md).
 
 ---
 
