@@ -10,15 +10,17 @@ Complete guide to deploying **9RTKSync** and **9Router** via Docker and Docker C
 
 Official multi-architecture Docker images (`linux/amd64` and `linux/arm64`) are published to the GitHub Container Registry (GHCR):
 
+Use a numeric tag for a specific release. Use `:latest` to follow the rolling image, which can advance when changes land on `main`. Find the current release tag in the [latest GitHub Release](https://github.com/pathbit/9RTKSync/releases/latest). To pin Compose, use the same numeric tag in its `image` field.
+
 ```bash
-# Pull latest stable release
+docker pull ghcr.io/pathbit/9rtksync:1.0.3
 docker pull ghcr.io/pathbit/9rtksync:latest
 ```
 
 ### Automated Package Retention (Last 3 Versions)
 
 To ensure high availability, rollback safety, and clean storage, the GitHub Actions CI/CD pipeline enforces an automated package retention policy:
-- **Always keeps the last 3 versions**: the active `latest` tag plus the 2 most recent tagged releases / commit SHAs.
+- The default cleanup protects the `latest` tag and retains up to two other tagged image versions. Pull a retained numeric tag for a specific release.
 - Manifest lists for multi-architecture builds (`amd64` + `arm64`) are resolved before pruning so platform layers are never orphaned.
 - Runs automatically after every successful release build and on a weekly schedule.
 
@@ -219,16 +221,17 @@ Guia completo para implantar o **9RTKSync** e o **9Router** via Docker e Docker 
 
 ## 1. Pacotes Oficiais e Política de Retenção de 3 Versões
 
-As imagens oficiais multi-arquitetura (`linux/amd64` e `linux/arm64`) são geradas e publicadas no GitHub Container Registry (GHCR):
+As imagens oficiais para `linux/amd64` e `linux/arm64` são publicadas no GitHub Container Registry. Use a tag numérica para fixar uma release. A tag `:latest` acompanha a imagem móvel, que pode avançar com mudanças na `main`. Consulte a [última release no GitHub](https://github.com/pathbit/9RTKSync/releases/latest) para ver a tag atual. No Compose, fixe a mesma tag no campo `image`.
 
 ```bash
+docker pull ghcr.io/pathbit/9rtksync:1.0.3
 docker pull ghcr.io/pathbit/9rtksync:latest
 ```
 
 ### Retenção Automática das 3 Últimas Versões
 
 O pipeline do GitHub Actions garante que:
-- **Sempre mantemos as 3 versões mais recentes**: a tag ativa `latest` mais as 2 versões/tags marcadas anteriores.
+- A limpeza padrão protege a tag `latest` e mantém até duas outras versões de imagem com tag. Para uma release específica, use uma tag numérica ainda disponível.
 - Os manifestos multi-plataforma são resolvidos antes da limpeza para evitar a quebra de camadas.
 - A limpeza ocorre ao término de cada build de release e em agendamento semanal.
 
@@ -283,3 +286,13 @@ Regra essencial de segurança: antes de expor qualquer rota, ative `REQUIRE_LOGI
 - **Cloudflare Tunnel Rápido:** `docker compose -f docker-compose.example.yml --profile tunel up -d` (ou clique no botão `Tunnel` no painel do 9Router).
 - **Cloudflare Tunnel Nomeado:** Preencha `TUNNEL_TOKEN` no `.env` e suba o perfil `tunel`.
 - **Tailscale (VPN Privada):** Preencha `TS_AUTHKEY` no `.env` e execute `docker compose -f docker-compose.example.yml --profile tailnet up -d` (ou utilize o botão `Tailscale` do 9Router).
+
+
+## Imágenes oficiales y versión fija
+
+Las imágenes de GitHub Container Registry admiten `linux/amd64` y `linux/arm64`. Usa una etiqueta numérica para fijar una versión o `:latest` para seguir la imagen que se actualiza con los cambios en `main`. Consulta la [última versión de GitHub](https://github.com/pathbit/9RTKSync/releases/latest) para conocer la etiqueta actual. En Compose, fija la misma etiqueta numérica en el campo `image`. La limpieza predeterminada protege `latest` y conserva hasta otras dos versiones de imagen con etiqueta.
+
+```bash
+docker pull ghcr.io/pathbit/9rtksync:1.0.3
+docker pull ghcr.io/pathbit/9rtksync:latest
+```
